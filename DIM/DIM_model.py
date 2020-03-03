@@ -7,30 +7,52 @@ from DIM.mi_networks import *
 
 
 class DIM_model(nn.Module):
-    def __init__(self,batch_s = 32):
+    def __init__(self,batch_s = 32,num_classes =256):
         super().__init__()
         # as a starting encoder we use alexnet 
         # we can try other architecture such as resNet, ecc., 
         # also pretrained version of the encoder could be a good option
         # these are exp to do
         
-        self.encoder = alexnet(num_classes = 256)
+        #self.encoder = alexnet(num_classes = 256)
+        
+        model_ft = models.resnet18(pretrained=True)
+        num_ftrs = model_ft.fc.in_features
+        model_ft.fc = nn.Linear(num_ftrs, num_classes)
+        
+        self.encoder = nn.Sequential(*list(model_ft.children())[:8])
+        self.head =  model_ft.avgpool
+        self.head2 = model_ft.fc
         
         #test input output size and channel to use
         fake_in = torch.ones([2,3,128,128])
-        out1,out2 = self.encoder(fake_in)
-        n_input = out1.size(1)
+        out1 = self.encoder(fake_in)
+        #print(out1.size())        
+        out2 = self.head(out1)
+        out2 = torch.flatten(out2, 1)
+        out2 = self.head2(out2)
+        #print(out2.size())
+        
+        n_inputL = out1.size(1)
+        n_inputG = out2.size(1)
         n_units = 2048
         
         # insert in the model mutual information networks
-        self.global_MI = Local_MI_Gl_Feat(n_input = n_input,n_units = n_units)
-        self.local_MI = Local_MI_1x1ConvNet(n_input,n_units)
+        self.global_MI = Local_MI_Gl_Feat(n_input = n_inputG,n_units = n_units)
+        
+        self.local_MI = Local_MI_1x1ConvNet(n_inputL,n_units)
+        
         self.features_g = n_units
         self.features_l = n_units
 
     def forward(self,x):
         self.batch = x.size(0)
-        E_phi, C_phi = self.encoder(x)
+        C_phi = self.encoder(x)
+        buff = self.head(C_phi)
+        buff = torch.flatten(buff, 1)
+        E_phi = self.head2(buff)
+       
+        
         E_phi = self.global_MI(E_phi)
         C_phi = self.local_MI(C_phi)
         E_phi = E_phi.view(self.batch,self.features_g,1)
