@@ -31,6 +31,15 @@ def update_metrics(loss,metrics):
     metrics['loss'] += loss.data.cpu().numpy()
     
 
+def compute_loss(pred,y,metrics):
+    """Compute accuracy and cross entropy loss for classifier"""
+    loss = F.cross_entropy(out,labels)
+    metrics['loss'] += loss.data.cpu().numpy()    
+    pred_l = pred.data.cpu().numpy()
+    metrics['accuracy'] +=np.sum(np.argmax(pred_l,axis=1)==y.data.cpu().numpy())/pred_l.shape[0] 
+    return loss
+    
+    
 def train(model, optimizer, scheduler,dataloaders,device,kwargs):
     """This funcion performs training of DIM local version without prior distrib. It can be wrapped into the DNN
        module as a class function  
@@ -172,10 +181,10 @@ def train_classifier(model, optimizer, scheduler,dataloaders,device,kwargs):
                     out = model(inputs)
                     #print('first', torch.cuda.max_memory_allocated(),torch.cuda.max_memory_cached())
                     loss = 0   
-                    loss = F.cross_entropy(out,labels)# fix this to have in dict accuracy and loss
+                    loss = compute_loss(out,labels)# fix this to have in dict accuracy and loss
                     # we need cross entropy for vlassificationd
                     #print(loss)
-                    update_metrics(loss,metrics)
+                   
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()
