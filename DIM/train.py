@@ -92,7 +92,7 @@ def train(model, optimizer, scheduler,dataloaders,device,kwargs):
                         loss.backward()
                         optimizer.step()
                         if batch_num % 20 == 0  and t_board:    
-                            print(epoch*gen_epoch+batch_num)
+                            #print(epoch*gen_epoch+batch_num)
                             # ...log the running loss
                             writer.add_scalar('training loss',loss,epoch*gen_epoch+batch_num)
                     if phase == 'val' and t_board:
@@ -181,7 +181,7 @@ def train_classifier(model, optimizer, scheduler,dataloaders,device,kwargs):
                     out = model(inputs)
                     #print('first', torch.cuda.max_memory_allocated(),torch.cuda.max_memory_cached())
                     loss = 0   
-                    loss = compute_loss(out,labels)# fix this to have in dict accuracy and loss
+                    loss = compute_loss(out,labels,metrics)# fix this to have in dict accuracy and loss
                     # we need cross entropy for vlassificationd
                     #print(loss)
                    

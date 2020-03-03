@@ -25,12 +25,11 @@ class DIM_model(nn.Module):
         # insert in the model mutual information networks
         self.global_MI = Local_MI_Gl_Feat(n_input = n_input,n_units = n_units)
         self.local_MI = Local_MI_1x1ConvNet(n_input,n_units)
-        self.batch = batch_s
         self.features_g = n_units
         self.features_l = n_units
 
     def forward(self,x):
-        
+        self.batch = x.size(0)
         E_phi, C_phi = self.encoder(x)
         E_phi = self.global_MI(E_phi)
         C_phi = self.local_MI(C_phi)
