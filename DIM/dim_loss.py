@@ -235,3 +235,5 @@ def donsker_varadhan_loss(l, m):
     loss = E_neg - E_pos
 
     return loss
+
+

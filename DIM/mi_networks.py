@@ -132,3 +132,37 @@ class NopNet(nn.Module):
             x_norms = torch.sqrt(x_norms + 1e-6)
             x = x / x_norms
         return x
+
+
+def weights_init(m):
+    ''' Weight initializer of DCGAN probably we need to play with it
+        look at AAE weight discriminator makhzani 2015
+    '''
+    classname = m.__class__.__name__
+    if classname.find('Conv') != -1:
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
+    elif classname.find('BatchNorm') != -1:
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
+
+    
+class Prior_discriminator(nn.Module):
+    '''Classificator of fake/real global features vector. real features sampled from the prior distribution
+        fake features are obtained from the surrent encoder architecture
+        TODO: initialization of parameters + remeber sigmoid into the output 
+        
+    '''
+    def __init__(self,n_input):
+        self.linear_layer = nn.Sequential(
+                nn.Linear(n_input, 1000, bias=False),
+                nn.BatchNorm1d(1000),
+                nn.ReLU(),
+                nn.Linear(1000, 200),
+                nn.BatchNorm1d(200),
+                nn.ReLU(),
+                nn.Linear(200,1)
+        )
+        self.linear_layer.apply(weights_init)
+    def forward(self,x):
+        x = self.linear_layer(x)
+        return x

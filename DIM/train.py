@@ -14,6 +14,7 @@ from torch.nn.parameter import Parameter
 
 ###
 from DIM.dim_loss import *
+from DIM.train_prior_disc import train_disc,sample_prior
 
 
 def print_metrics(metrics, batch_num, phase):    
@@ -49,7 +50,14 @@ def train(model, optimizer, scheduler,dataloaders,device,kwargs):
     writer=kwargs['writer']
     best_loss=kwargs['best_loss']
     t_board=kwargs['t_board']
-    scale_loss = kwargs['gamma']
+    gamma = kwargs['gamma']
+    beta = kwargs['beta']
+    use_prior = kwargs['Prior_Flag'] 
+    discriminator = kwargs['discriminator'] 
+    optimizerD = kwargs['optimizerD'] 
+    samples_path = kwargs['samples_path']
+    
+    sampler = sample_prior(samples_path,device)
     gen_epoch = 0
     gen_epoch_l=0
     
@@ -86,8 +94,21 @@ def train(model, optimizer, scheduler,dataloaders,device,kwargs):
                     #we use jsd MI approx. since it is more stable eventually for other exp call compute dim loss
                     #function already implemented
                     loss = fenchel_dual_loss(C_phi, E_phi, measure='JSD') 
-                    #print(loss)
                     update_metrics(loss,metrics)
+                    ################################## section for prior Loss
+                    if use_prior:
+                        #definition of X_Q (current samples) as features extracted by the encoder E_phi 
+                        #in the paper there is also a sigmoid applied maybe it can be tested
+                        X_P = sampler(size)
+                        loss*=beta
+                        if phase=='train':
+                            discriminator,Q_samples= train_disc(discriminator,X_P,E_phi,optimizerD,metrics,gradient_penalty=1.0)
+                        else:
+                            Q_samples = discriminator(E_phi)
+                            
+                        prior_loss = generator_loss(Q_samples, measure='GAN', loss_type='non-saturating')
+                        loss += gamma*prior_loss
+                    ################################## backward and tensorboard: othre quantities can be added
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()

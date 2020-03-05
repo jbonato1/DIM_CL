@@ -90,3 +90,27 @@ class LoadDataset(DatasetMixin):
             return x, y
         else:
             return x
+        
+class LoadFeatures(DatasetMixin):
+    def __init__(self, features, labels=None, transform=None, indices=None):
+        super(LoadDataset, self).__init__(transform=transform)
+        self.images = features
+        self.labels = labels
+        if indices is None:
+            indices = np.arange(len(features))
+        self.indices = indices
+        self.train = labels is not None
+
+    def __len__(self):
+        """return length of this dataset"""
+        return len(self.indices)
+
+    def get_example(self, i):
+        """Return i-th data"""
+        i = self.indices[i]
+        x = self.images[i]    
+        if self.train:
+            y = self.labels[i]
+            return x, y
+        else:
+            return x
