@@ -2,19 +2,14 @@ import torch.nn as nn
 import torch
 import numpy
 
+import torchvision.models as models
 from DIM.model import *
 from DIM.mi_networks import *
 
 
 class DIM_model(nn.Module):
-    def __init__(self,batch_s = 32,num_classes =256):
+    def __init__(self,batch_s = 32,num_classes =64,feature=False):
         super().__init__()
-        # as a starting encoder we use alexnet 
-        # we can try other architecture such as resNet, ecc., 
-        # also pretrained version of the encoder could be a good option
-        # these are exp to do
-        
-        #self.encoder = alexnet(num_classes = 256)
         
         model_ft = models.resnet18(pretrained=True)
         num_ftrs = model_ft.fc.in_features
@@ -44,17 +39,24 @@ class DIM_model(nn.Module):
         
         self.features_g = n_units
         self.features_l = n_units
-
+        
+        self.feature = feature
+        
     def forward(self,x):
         self.batch = x.size(0)
         C_phi = self.encoder(x)
         buff = self.head(C_phi)
         buff = torch.flatten(buff, 1)
         E_phi = self.head2(buff)
-       
+        if self.feature:
+            A_phi = E_phi
         
         E_phi = self.global_MI(E_phi)
         C_phi = self.local_MI(C_phi)
         E_phi = E_phi.view(self.batch,self.features_g,1)
         C_phi = C_phi.view(self.batch,self.features_l,-1)
-        return E_phi,C_phi
+        if self.feature:
+            return E_phi,C_phi,A_phi
+        else:
+            return E_phi,C_phi
+        

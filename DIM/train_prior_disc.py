@@ -24,6 +24,8 @@ def train_disc(network,X_P,X_Q,optimizerD,metrics,gradient_penalty=1.0):
 
         
     network.zero_grad() 
+    nnLin = nn.Sigmoid()
+    #Q_samples = nnLin(Q_samples)
     P_samples = network(X_P)
     Q_samples = network(X_Q)
 
@@ -48,27 +50,27 @@ def train_disc(network,X_P,X_Q,optimizerD,metrics,gradient_penalty=1.0):
     
 class sample_prior():
     def __init__(self,path,device):
-        self.path = path
-        self.device = device
-        dset= h5py.File(path+'.hdf5','r') 
-        prior_distrib =  np.asarray(dset['data'])
-        self.prior_distrib = torch.as_tensor(prior_distrib, dtype = torch.float32,device=torch.device('cpu'))
-        del prior_distrib
+         self.path = path
+#         self.device = device
+#         dset= h5py.File(path+'.hdf5','r') 
+#         prior_distrib =  np.asarray(dset['data'])
+#         self.prior_distrib = torch.as_tensor(prior_distrib, dtype = torch.float32,device=torch.device('cpu'))
+#         del prior_distrib
         
     def sample(self,size):
-        index = np.random.choice(np.arange(self.prior_distrib.size(0)), size, replace=False)        
-        sample_prior = self.prior_distrib[index,:]
+        #index = np.random.choice(np.arange(self.prior_distrib.size(0)), size, replace=False)        
+        sample_prior = np.random.random_sample((size,64))#self.prior_distrib[index,:]
         sample_prior.to(device)
         return sample_prior
 
-def save_prior_dist(encoder,dataloader,path):
+def save_prior_dist(encoder,dataloader,device,path=None,save=False):
     encoder.eval()
     data =None
     lab = None
     for inputs, labels in dataloader:
         torch.cuda.empty_cache()
         inputs = inputs.to(device)        
-        pred = model_ft(inputs)
+        _,_,pred = encoder(inputs)
         pred_l = pred.data.cpu().numpy()
         if data is None:
             data = pred_l
@@ -76,8 +78,9 @@ def save_prior_dist(encoder,dataloader,path):
         else:
             data = np.concatenate((data,pred_l),axis=0)
             lab = np.concatenate((lab,labels.data.cpu().numpy()),axis=0)
-    with h5py.File(path,'w') as f:
-        dset = f.create_dataset('data',data=data)
-        dset = f.create_dataset('labels',data=lab)
-    
-
+    if save:
+        with h5py.File(path,'w') as f:
+            dset = f.create_dataset('data',data=data)
+            dset = f.create_dataset('labels',data=lab)
+    else:
+        return data,lab

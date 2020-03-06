@@ -66,3 +66,24 @@ def alexnet(pretrained=False, progress=True, **kwargs):
     return model
 
 
+def init_weights(m):
+    if type(m)== nn.Linear:
+        nn.init.kaiming_uniform_(m.weight)
+
+class classifier(nn.Module):
+    def __init__(self,n_input,n_class):
+        super().__init__()
+        self.linear = nn.Sequential(
+                nn.Linear(n_input, 256, bias=False),
+                nn.BatchNorm1d(256),
+                nn.ReLU(),
+                nn.Linear(256, 128, bias=False),
+                nn.BatchNorm1d(128),
+                nn.ReLU(),
+                nn.Linear(128, n_class)
+            )
+        self.linear.apply(init_weights)
+        
+    def forward(self,x):
+        out = self.linear(x)
+        return out
