@@ -80,7 +80,7 @@ def train(model, optimizer, scheduler,dataloaders,device,kwargs):
             epoch_samples = 0
             batch_num = 0
             for inputs, labels in dataloaders[phase]:
-                
+                print(inputs.size())
                 torch.cuda.empty_cache()
                 inputs = inputs.to(device)
                 labels = labels.to(device)        

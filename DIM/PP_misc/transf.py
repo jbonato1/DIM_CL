@@ -171,13 +171,15 @@ def apply_aug(aug, image):
 
 
 class Transform:
-    def __init__(self, affine=0., train=True,blur_ratio=0., cutout_ratio=0.,ssr_ratio=0.,flip=0.):
+    def __init__(self, affine=0., train=True,cutout_ratio=0.,ssr_ratio=0.,flip=0.):
         
         self.affine = affine
         self.train = train
         self.cutout_ratio = cutout_ratio
         self.ssr_ratio = ssr_ratio
         self.flip=flip
+        self.crop=.5
+        self.hue =.8
         #print('wwwwwwwwwww')
     def __call__(self, example):
         if self.train:
@@ -188,6 +190,7 @@ class Transform:
             x = example
             
         x = np.transpose(x, (1,2,0))
+        
         #--- Augmentation ---
         if _evaluate_ratio(self.affine):
             x = affine_image(x)
@@ -214,6 +217,10 @@ class Transform:
             if _evaluate_ratio(self.flip):
                 #print('w4')
                 x = np.flip(x,axis=1).copy()
+            if _evaluate_ratio(self.crop):
+                x = apply_aug(A.augmentations.transforms.RandomSizedCrop((90,128), 128, 128, w2h_ratio=1.0, interpolation=3, always_apply=False, p=1.0),x)
+            if _evaluate_ratio(self.hue):
+                x = apply_aug(A.augmentations.transforms.HueSaturationValue(hue_shift_limit=30, sat_shift_limit=30, val_shift_limit=20, always_apply=False, p=1),x)
                 
         x = np.transpose(x, (2,0,1)) 
         if self.train:

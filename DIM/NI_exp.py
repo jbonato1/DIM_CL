@@ -38,9 +38,13 @@ from train_prior_disc import save_prior_dist
 
 device = torch.device('cuda:0')
 dataset = CORE50(root='/home/jbonato/Documents/cvpr_clvision_challenge/core50/data/', scenario='ni',preload=True)
-test =  dataset.get_full_valid_set(reduced=True)
+test =  dataset.get_full_valid_set(reduced=False)
 data_test = test[0][0][0]
 labels_test = test[0][0][1]
+
+# data_test = data_testf[labels_testf<5,:,:,:]
+# labels_test = labels_testf[labels_testf<5]
+
 load = False
 replay = True
 train = True
@@ -48,11 +52,13 @@ train = True
 stats = {"ram": [], "disk": []}
 
 if train:
-    tr = Transform(affine=0.5, train=True,blur_ratio=0.5, cutout_ratio=0.5,ssr_ratio=0.5,flip = 0.5)
+    tr = Transform(affine=0.5, train=True,cutout_ratio=0.6,ssr_ratio=0.6,flip = 0.6)
     for i, train_batch in enumerate(dataset):
         writerDIM = SummaryWriter('runs/experiment_DIM'+str(i))
         data,labels, t = train_batch
-
+#         data = dataf[labelsf<5,:,:,:]
+#         labels = labelsf[labelsf<5]
+        
         index_tr,index_cv,coreset = data_split(data.shape[0],777)
     #     train_x = data[index_tr]
     #     train_y = labels[index_tr]
@@ -85,7 +91,7 @@ if train:
         trC,cvC = data_split_Tr_CV(dataC.shape[0],777)
 
         train_set = LoadDataset(dataC,labC,transform=tr,indices=trC)
-        val_set = LoadDataset(dataC,labC,indices=cvC)
+        val_set = LoadDataset(dataC,labC,transform=tr,indices=cvC)
         print('Training set: {0} \n Validation Set {1}'.format(train_set.__len__(),val_set.__len__()))
         batch_size=32
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -95,9 +101,9 @@ if train:
         if i ==0:        
             prior = False
             ep=80
-            dim_model = DIM_model(batch_s=32,num_classes =256,feature=True)   
+            dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
             dim_model.to(device)
-            classifierM = classifier(n_input=256,n_class=50)
+            classifierM = classifier(n_input=128,n_class=50)
             classifierM = classifierM.to(device)
             writer = SummaryWriter('runs/experiment_C'+str(i))
             lr_new = 0.00001
@@ -105,7 +111,7 @@ if train:
             epC=50
         else:
             prior = True
-            ep=6
+            ep=8
             epC=10
             lr_new =0.000005
             lrC = 0.00005
@@ -169,14 +175,15 @@ if train:
         
 else:
     
-    dim_model = DIM_model(batch_s=32,feature=True)   
+    dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
     dim_model.to(device)
-    classifierM = classifier(n_class=50)
+    classifierM = classifier(n_input = 128,n_class=50)
     classifierM = classifierM.to(device)
     print('Load DIM model weights first step')
-    for i in range(8):
-        dim_model.load_state_dict(torch.load('/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsDIM_T'+str(i)+'.pt'))    
-        classifierM.load_state_dict(torch.load('/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsC_T'+str(i)+'.pt'))
+    errors = np.zeros((50,))
+    for i in [7]:#range(8):
+        dim_model.load_state_dict(torch.load('/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsDIM_T'+str(i)+'cset256.pt'))    
+        classifierM.load_state_dict(torch.load('/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsC_T'+str(i)+'cset256.pt'))
 
         test_set = LoadDataset(data_test,labels_test,transform=None)
         batch_size=100
@@ -191,7 +198,14 @@ else:
             _,_,ww =dim_model(inputs)
             pred = classifierM(ww)
             pred_l = pred.data.cpu().numpy()
+            lb = labels.data.cpu().numpy()
             score.append(np.sum(np.argmax(pred_l,axis=1)==labels.data.cpu().numpy())/pred_l.shape[0])
+            
+            errors[lb[np.argmax(pred_l,axis=1)!=lb].astype(np.int64)]+=1
         print(np.asarray(score).mean())
     
-        
+    print(errors)
+    
+    a,b = np.unique(labels_test,True)
+    print(a)
+    print(b)

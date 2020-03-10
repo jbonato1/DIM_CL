@@ -75,7 +75,7 @@ class LoadDataset(DatasetMixin):
         """Return i-th data"""
         i = self.indices[i]
         x = self.images[i]
-        
+        #print(x.shape)
         # scale to [0,1] interval
         x = x/255
         
