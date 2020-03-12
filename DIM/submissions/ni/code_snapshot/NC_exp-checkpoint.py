@@ -107,7 +107,7 @@ if train:
         train_set = LoadDataset(dataC,labC,transform=tr,indices=trC)
         val_set = LoadDataset(dataC,labC,transform=tr,indices=cvC)
         print('Training set: {0} \n Validation Set {1}'.format(train_set.__len__(),val_set.__len__()))
-        batch_size=32
+        batch_size=64
         train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
         valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
         dataloaders = {'train':train_loader,'val':valid_loader}
@@ -125,7 +125,7 @@ if train:
             epC=50
         else:
             prior = True
-            ep=6
+            ep=8
             epC=10
             lr_new =0.000005
             lrC = 0.00005
@@ -142,12 +142,9 @@ if train:
             dim_model = trainEnc_MI(dim_model, optimizer, scheduler,dataloaders,device,tr_dict_enc)
             torch.save(dim_model.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsDIM_T'+str(i)+'_NC_128.pt')
 
-        dim_model.eval()
         #if i==0:
         dataTr,labTr = save_prior_dist(dim_model,train_loader,device)
         dataCv,labCv = save_prior_dist(dim_model,valid_loader,device)
-        
-        del dataloaders,train_loader,valid_loader
 
         print(dataTr.shape,labTr.shape)
 
@@ -169,7 +166,7 @@ if train:
         stats['ram'].append(check_ram_usage())
     ######## print mem 
         print('Memory usage',np.asarray(stats['ram']).mean())
-        del dataloaderC,train_loader,valid_loader    
+    
     #### test Parte on coreset to undestand performance
         for jj in range(len(test)):
             data_test = test[jj][0][0]

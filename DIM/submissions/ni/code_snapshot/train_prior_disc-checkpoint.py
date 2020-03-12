@@ -64,9 +64,7 @@ class sample_prior():
         return sample_prior
 
 def save_prior_dist(encoder,dataloader,device,path=None,save=False):
-    '''
-    Generate data fro classifier training
-    '''
+    encoder.eval()
     data =None
     lab = None
     for inputs, labels in dataloader:
