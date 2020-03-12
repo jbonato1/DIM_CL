@@ -66,8 +66,8 @@ def main(args):
     print("Final inference on test set...")
     full_testset = dataset.get_full_test_set()
 
-    pred = NI.test(full_testset)
-
+    pred = NI.test(full_testset,standalone=False)
+    
     with open(sub_dir + "/test_preds.txt", "w") as wf:
         for jj in range(pred.shape[0]):
             wf.write(str(pred[jj]) + "\n")
