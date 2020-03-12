@@ -13,9 +13,9 @@ from torch.nn import init
 from torch.nn.parameter import Parameter
 
 ###
-from DIM.dim_loss import *
-from DIM.train_prior_disc import train_disc,sample_prior
-
+from dim_loss import *
+from train_prior_disc import train_disc,sample_prior
+from func.common import check_ext_mem, check_ram_usage
 
 def print_metrics(metrics, batch_num, phase):    
     """ Utility function to print dictionary elements that track loss ecc."""
@@ -41,128 +41,9 @@ def compute_loss(pred,y,metrics):
     return loss
     
     
-def train(model, optimizer, scheduler,dataloaders,device,kwargs):
-    """This funcion performs training of DIM local version without prior distrib. It can be wrapped into the DNN
-       module as a class function  
-    """
-    
-    num_epochs=kwargs['ep']
-    writer=kwargs['writer']
-    best_loss=kwargs['best_loss']
-    t_board=kwargs['t_board']
-    gamma = kwargs['gamma']
-    beta = kwargs['beta']
-    use_prior = kwargs['Prior_Flag'] 
-    discriminator = kwargs['discriminator'] 
-    optimizerD = kwargs['optimizerD'] 
-    samples_path = kwargs['samples_path']
-    
-    sampler = sample_prior(samples_path,device)
-    gen_epoch = 0
-    gen_epoch_l=0
-    
-    best_model_wts = copy.deepcopy(model.state_dict())
-    
-    for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
-        
-        since = time.time()
-        
-        # Each epoch has a training and validation phase
-        for phase in ['train', 'val']:
-            if phase == 'train':    
-                model.train()  # Set model to training mode
-            else:
-                model.eval()   # Set model to evaluate mode
+#### Eventually think about a generale trainer class
 
-            metrics = defaultdict(float)
-            epoch_samples = 0
-            batch_num = 0
-            for inputs, labels in dataloaders[phase]:
-                print(inputs.size())
-                torch.cuda.empty_cache()
-                inputs = inputs.to(device)
-                labels = labels.to(device)        
-                optimizer.zero_grad()
-                # forward
-                # track history if only in train
-                with torch.set_grad_enabled(phase == 'train'):                    
-                    E_phi,C_phi = model(inputs)
-                    #print('first', torch.cuda.max_memory_allocated(),torch.cuda.max_memory_cached())
-                    loss = 0   
-                    #we use jsd MI approx. since it is more stable eventually for other exp call compute dim loss
-                    #function already implemented
-                    loss = fenchel_dual_loss(C_phi, E_phi, measure='JSD') 
-                    update_metrics(loss,metrics)
-                    ################################## section for prior Loss
-                    if use_prior:
-                        #definition of X_Q (current samples) as features extracted by the encoder E_phi 
-                        #in the paper there is also a sigmoid applied maybe it can be tested
-                        X_P = sampler(size)
-                        loss*=beta
-                        if phase=='train':
-                            discriminator,Q_samples= train_disc(discriminator,X_P,E_phi,optimizerD,metrics,gradient_penalty=1.0)
-                        else:
-                            Q_samples = discriminator(E_phi)
-                            
-                        prior_loss = generator_loss(Q_samples, measure='GAN', loss_type='non-saturating')
-                        loss += gamma*prior_loss
-                    ################################## backward and tensorboard: othre quantities can be added
-                    if phase == 'train':
-                        loss.backward()
-                        optimizer.step()
-                        if batch_num % 20 == 0  and t_board:    
-                            #print(epoch*gen_epoch+batch_num)
-                            # ...log the running loss
-                            writer.add_scalar('training loss',loss,epoch*gen_epoch+batch_num)
-                    if phase == 'val' and t_board:
-                        if batch_num % 10 == 0:    
-                            # ...log the running loss
-                            writer.add_scalar('Validation loss',loss,epoch*gen_epoch_l+batch_num)
-
-                # statistics
-                batch_num +=1
-            if epoch ==0 and phase=='train':
-                gen_epoch = batch_num
-            if epoch ==0 and phase=='val':
-                gen_epoch_l = batch_num
-            if phase == 'train':
-                
-                avg = metrics['loss']/batch_num
-                
-                scheduler.step()#avg
-
-                for param_group in optimizer.param_groups:
-                    print("LR", param_group['lr'])
-            ###ch
-            
-            print_metrics(metrics, batch_num, phase)
-            # deep copy the model
-            epoch_loss = metrics['loss']/batch_num
-            if phase == 'val' and epoch_loss < best_loss:
-                print("saving best model")
-                best_loss = epoch_loss
-                
-
-                best_model_wts = copy.deepcopy(model.state_dict())
-
-        time_elapsed = time.time() - since
-
-        print('{:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
-    print('Best val loss: {:4f}'.format(best_loss))
-
-    # load best model weights
-    model.load_state_dict(best_model_wts)
-
-    del best_model_wts
-    return model
-
-
-
-##### Eventually think about a generale trainer class
-
-def trainEnc_MI(model, optimizer, scheduler,dataloaders,device,kwargs):
+def trainEnc_MI(stats,model, optimizer, scheduler,dataloaders,device,kwargs):
     """This funcion performs training of DIM local version without prior distrib. It can be wrapped into the DNN
        module as a class function  
     """
@@ -181,6 +62,8 @@ def trainEnc_MI(model, optimizer, scheduler,dataloaders,device,kwargs):
     best_model_wts = copy.deepcopy(model.state_dict())
     
     for epoch in range(num_epochs):
+        stats['disk'].append(check_ext_mem("cl_ext_mem"))
+        stats['ram'].append(check_ram_usage())
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
         
@@ -275,9 +158,9 @@ def trainEnc_MI(model, optimizer, scheduler,dataloaders,device,kwargs):
     model.load_state_dict(best_model_wts)
 
     del best_model_wts
-    return model
+    return model,stats
 
-def train_classifier(model, optimizer, scheduler,dataloaders,device,kwargs):
+def train_classifier(stats,model, optimizer, scheduler,dataloaders,device,kwargs):
     """This funcion performs training of classifier HEAD. It can be wrapped into the DNN
        module as a class function  
     """
@@ -293,6 +176,8 @@ def train_classifier(model, optimizer, scheduler,dataloaders,device,kwargs):
     best_model_wts = copy.deepcopy(model.state_dict())
     
     for epoch in range(num_epochs):
+        stats['disk'].append(check_ext_mem("cl_ext_mem"))
+        stats['ram'].append(check_ram_usage())
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
         
@@ -362,28 +247,4 @@ def train_classifier(model, optimizer, scheduler,dataloaders,device,kwargs):
     model.load_state_dict(best_model_wts)
 
     del best_model_wts
-    return model
-
-
-
-def compute_dim_loss(l_enc, m_enc, measure, mode):
-    '''Computes DIM loss.
-    Args:
-        l_enc: Local feature map encoding.
-        m_enc: Multiple globals feature map encoding.
-        measure: Type of f-divergence. For use with mode `fd`
-        mode: Loss mode. Fenchel-dual `fd`, NCE `nce`, or Donsker-Vadadhan `dv`.
-    Returns:
-        torch.Tensor: Loss.
-    '''
-
-    if mode == 'fd':
-        loss = fenchel_dual_loss(l_enc, m_enc, measure=measure)
-    elif mode == 'nce':
-        loss = infonce_loss(l_enc, m_enc)
-    elif mode == 'dv':
-        loss = donsker_varadhan_loss(l_enc, m_enc)
-    else:
-        raise NotImplementedError(mode)
-
-    return loss
+    return model,stats
