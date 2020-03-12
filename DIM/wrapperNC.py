@@ -94,7 +94,7 @@ class NC_wrap():
                 ext_mem = [
                     np.concatenate((data[coreset], ext_mem[0])),
                     np.concatenate((labels[coreset], ext_mem[1]))]
-                if replay:
+                if self.replay:
                     dataC = np.concatenate((data[index_tr], data[index_cv],dataP),axis=0)
                     labC = np.concatenate((labels[index_tr],labels[index_cv],labP),axis=0)
                 else:
@@ -128,7 +128,7 @@ class NC_wrap():
                 epC=50
             else:
                 prior = True
-                ep=8
+                ep=6
                 epC=10
                 lr_new =0.000005
                 lrC = 0.00005
@@ -174,27 +174,31 @@ class NC_wrap():
             torch.save(classifierM.state_dict(), self.path + 'weights/weightsC_T'+str(i)+'_NC128.pt')
 
             #### Cross_val Testing
+            for jj in range(len(self.val_data)):
+                data_test = self.val_data[jj][0][0]
+                labels_test = self.val_data[jj][0][1]
+                task = self.val_data[jj][1]
 
-            test_set = LoadDataset(data_test,labels_test,transform=None)
-            batch_size=100
-            test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
-            score= []
-            dim_model.eval()
-            classifierM.eval()
-            for inputs, labels in test_loader:
-                torch.cuda.empty_cache()
-                inputs = inputs.to(device)
-                labels = labels.to(device) 
-                _,_,ww =dim_model(inputs)
-                pred = classifierM(ww)
-                pred_l = pred.data.cpu().numpy()
-                pred_l = np.argmax(pred_l,axis=1)
-                out_lab = self.revert_lab(pred_l,task,case)
-                score.append(np.sum(out_lab==labels.data.cpu().numpy())/out_lab.shape[0])
-            print('TEST PERFORMANCES:', np.asarray(score).mean())
+                test_set = LoadDataset(data_test,labels_test,transform=None)
+                batch_size=100
+                test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
+                score= []
+                dim_model.eval()
+                classifierM.eval()
+                for inputs, labels in test_loader:
+                    torch.cuda.empty_cache()
+                    inputs = inputs.to(self.device)
+                    labels = labels.to(self.device) 
+                    _,_,ww =dim_model(inputs)
+                    pred = classifierM(ww)
+                    pred_l = pred.data.cpu().numpy()
+                    pred_l = np.argmax(pred_l,axis=1)
+                    out_lab = self.revert_lab(pred_l,task)
+                    score.append(np.sum(out_lab==labels.data.cpu().numpy())/out_lab.shape[0])
+                print('Task {0} TEST PERFORMANCES:{1}'.format(task,np.asarray(score).mean()))
+                del test_set,test_loader
             acc_time.append(np.asarray(score).mean())
-            del test_set,test_loader
-            
+   
         self.dim_model = dim_model
         self.classifierM = classifierM
         acc_time = np.asarray(acc_time)
@@ -211,25 +215,27 @@ class NC_wrap():
             
             self.dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T0_NC128.pt'))
             self.classifierM.load_state_dict(torch.load(self.path + 'weights/weightsC_T0_NC128.pt'))
-
-        
-        test_set = LoadDataset(test_data[0][0][0],transform=None)
-        batch_size=100
-        test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
-        score= []
-        self.dim_model.eval()
-        self.classifierM.eval()
-        for inputs in test_loader:
-            torch.cuda.empty_cache()
-            inputs = inputs.to(self.device)
-            _,_,ww =self.dim_model(inputs)
-            pred = self.classifierM(ww)
-            pred_l = pred.data.cpu().numpy()
-            pred_l = np.argmax(pred_l,axis=1)
-            out_lab = self.revert_lab(pred_l,task)
-            if score is None:
-                score = out_lab
-            else:
-                score = np.concatenate((score,out_lab),axis=0)      
+        score = None
+        for jj in range(len(test_data)):
+            data_test = test_data[jj][0][0]
+            task = test_data[jj][1]
+            print(task,jj)    
+            test_set = LoadDataset(data_test,transform=None)
+            batch_size=100
+            test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
+            self.dim_model.eval()
+            self.classifierM.eval()
+            for inputs in test_loader:
+                torch.cuda.empty_cache()
+                inputs = inputs.to(self.device)
+                _,_,ww =self.dim_model(inputs)
+                pred = self.classifierM(ww)
+                pred_l = pred.data.cpu().numpy()
+                pred_l = np.argmax(pred_l,axis=1)
+                out_lab = self.revert_lab(pred_l,task)
+                if score is None:
+                    score = out_lab
+                else:
+                    score = np.concatenate((score,out_lab),axis=0)      
         return score
 

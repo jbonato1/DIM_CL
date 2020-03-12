@@ -38,11 +38,11 @@ def main(args):
     print("Recovering validation set...")
     full_valdidset = dataset.get_full_valid_set()
     device0 = torch.device('cuda:0')
-    # code for training 
+#     # code for training 
     if args.scenario=='ni':
         NI = NI_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=True)
     elif args.scenario=='multi-task-nc':
-        NI = NC_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=False)
+        NI = NC_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=True)
     elif args.scenario=='nic':
         raise NotImplementedError
     stats,valid_acc = NI.train()
@@ -71,7 +71,7 @@ def main(args):
     print("Final inference on test set...")
     full_testset = dataset.get_full_test_set()
 
-    pred = NI.test(full_testset,standalone=False)
+    pred = NI.test(full_testset,standalone=True)
     
     with open(sub_dir + "/test_preds.txt", "w") as wf:
         for jj in range(pred.shape[0]):

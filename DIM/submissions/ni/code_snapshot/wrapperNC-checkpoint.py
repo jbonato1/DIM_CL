@@ -45,7 +45,32 @@ class NI_wrap():
         self.tr = Transform(affine=0.5, train=True,cutout_ratio=0.6,ssr_ratio=0.6,flip = 0.6)
         self.device = device
         self.path = path 
+        self.map_lb = {'0':None,'1':'B','2':'A','3':'B','4':'A','5':'A','6':'A','7':'B','8':'B'}
         
+        
+    def convert_lab(self,labels,task):
+        if task!=0:
+            case = self.map_lb[str(task)]
+            print(case)
+            if case == 'A':
+                n_labels = labels%5
+            if case =='B':
+                n_labels = labels%5 + 5
+            return n_labels
+        else:
+            return labels
+        
+    def revert_lab(self,labels,task):
+        if task!=0:
+            case = self.map_lb[str(task)]
+            if case == 'A':
+                n_labels = labels+task*5+5
+            if case == 'B':
+                n_labels = labels+task*5
+            return n_labels
+        else:
+            return labels
+
     def train(self):
         acc_time = []
         data_test = self.val_data[0][0][0]
@@ -53,8 +78,8 @@ class NI_wrap():
         for i, train_batch in enumerate(self.dataset):
             
             writerDIM = SummaryWriter('runs/experiment_DIM'+str(i))
-            data,labels, t = train_batch
-
+            data,labelsI, t = train_batch
+            labels = self.convert_lab(labelsI,t,case)            
             index_tr,index_cv,coreset = data_split(data.shape[0],777)
 
             # adding eventual replay patterns to the current batch
@@ -69,7 +94,7 @@ class NI_wrap():
                 ext_mem = [
                     np.concatenate((data[coreset], ext_mem[0])),
                     np.concatenate((labels[coreset], ext_mem[1]))]
-                if self.replay:
+                if replay:
                     dataC = np.concatenate((data[index_tr], data[index_cv],dataP),axis=0)
                     labC = np.concatenate((labels[index_tr],labels[index_cv],labP),axis=0)
                 else:
@@ -92,7 +117,7 @@ class NI_wrap():
 
             if i ==0:        
                 prior = False
-                ep=80
+                ep=50
                 dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
                 dim_model.to(self.device)
                 classifierM = classifier(n_input=128,n_class=50)
@@ -117,12 +142,12 @@ class NI_wrap():
 
             if i==0 and self.load:
                 print('Load DIM model weights first step')
-                dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T0cset128.pt'))
+                dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T0_NC128.pt'))
             else:
                 ############################## Train Encoder########################################
                 dim_model,self.stats = trainEnc_MI(self.stats,dim_model, optimizer, scheduler,dataloaders,self.device,tr_dict_enc)
                 ####################################################################################
-                torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'cset128.pt')
+                torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'_NC128.pt')
 
             #if i==0:
             dataTr,labTr = save_prior_dist(dim_model,train_loader,self.device)
@@ -146,7 +171,7 @@ class NI_wrap():
             classifierM,self.stats = train_classifier(self.stats,classifierM, optimizerC, schedulerC,dataloaderC,self.device,tr_dict_cl)
             #################################### #################################### ##############
 
-            torch.save(classifierM.state_dict(), self.path + 'weights/weightsC_T'+str(i)+'cset128.pt')
+            torch.save(classifierM.state_dict(), self.path + 'weights/weightsC_T'+str(i)+'_NC128.pt')
 
             #### Cross_val Testing
 
@@ -158,15 +183,18 @@ class NI_wrap():
             classifierM.eval()
             for inputs, labels in test_loader:
                 torch.cuda.empty_cache()
-                inputs = inputs.to(self.device)
-                labels = labels.to(self.device) 
+                inputs = inputs.to(device)
+                labels = labels.to(device) 
                 _,_,ww =dim_model(inputs)
                 pred = classifierM(ww)
                 pred_l = pred.data.cpu().numpy()
-                score.append(np.sum(np.argmax(pred_l,axis=1)==labels.data.cpu().numpy())/pred_l.shape[0])
+                pred_l = np.argmax(pred_l,axis=1)
+                out_lab = self.revert_lab(pred_l,task,case)
+                score.append(np.sum(out_lab==labels.data.cpu().numpy())/out_lab.shape[0])
             print('TEST PERFORMANCES:', np.asarray(score).mean())
             acc_time.append(np.asarray(score).mean())
             del test_set,test_loader
+            
         self.dim_model = dim_model
         self.classifierM = classifierM
         acc_time = np.asarray(acc_time)
@@ -181,14 +209,14 @@ class NI_wrap():
             self.classifierM = classifier(n_input = 128,n_class=50)
             self.classifierM = self.classifierM.to(self.device)  
             
-            self.dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T0cset128.pt'))
-            self.classifierM.load_state_dict(torch.load(self.path + 'weights/weightsC_T0cset128.pt'))
+            self.dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T0_NC128.pt'))
+            self.classifierM.load_state_dict(torch.load(self.path + 'weights/weightsC_T0_NC128.pt'))
 
         
         test_set = LoadDataset(test_data[0][0][0],transform=None)
         batch_size=100
         test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
-        score = None
+        score= []
         self.dim_model.eval()
         self.classifierM.eval()
         for inputs in test_loader:
@@ -197,9 +225,11 @@ class NI_wrap():
             _,_,ww =self.dim_model(inputs)
             pred = self.classifierM(ww)
             pred_l = pred.data.cpu().numpy()
+            pred_l = np.argmax(pred_l,axis=1)
+            out_lab = self.revert_lab(pred_l,task)
             if score is None:
-                score = np.argmax(pred_l,axis=1)
+                score = out_lab
             else:
-                score = np.concatenate((score,np.argmax(pred_l,axis=1)),axis=0)      
+                score = np.concatenate((score,out_lab),axis=0)      
         return score
 

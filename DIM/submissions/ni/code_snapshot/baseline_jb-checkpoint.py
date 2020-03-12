@@ -19,6 +19,7 @@ sys.path.append('/home/jbonato/Documents/cvpr_clvision_challenge/')
 from core50.dataset import CORE50
 from utils.common import create_code_snapshot
 from DIM.wrapperNI import *
+from DIM.wrapperNC import *
 
 def main(args):
 
@@ -38,8 +39,12 @@ def main(args):
     full_valdidset = dataset.get_full_valid_set()
     device0 = torch.device('cuda:0')
     # code for training 
-    NI = NI_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/')
-    
+    if args.scenario=='ni':
+        NI = NI_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=True)
+    elif args.scenario=='multi-task-nc':
+        NI = NC_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=False)
+    elif args.scenario=='nic':
+        raise NotImplementedError
     stats,valid_acc = NI.train()
     ram_usage = np.asarray(stats['ram'])
     ext_mem_sz = np.asarray(stats['disk'])
@@ -66,8 +71,8 @@ def main(args):
     print("Final inference on test set...")
     full_testset = dataset.get_full_test_set()
 
-    pred = NI.test(full_testset)
-
+    pred = NI.test(full_testset,standalone=False)
+    
     with open(sub_dir + "/test_preds.txt", "w") as wf:
         for jj in range(pred.shape[0]):
             wf.write(str(pred[jj]) + "\n")
