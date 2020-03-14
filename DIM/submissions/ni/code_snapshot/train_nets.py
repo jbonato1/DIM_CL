@@ -15,6 +15,8 @@ from torch.nn.parameter import Parameter
 ###
 from dim_loss import *
 from train_prior_disc import train_disc,sample_prior
+import sys
+sys.path.append('../')
 from func.common import check_ext_mem, check_ram_usage
 
 def print_metrics(metrics, batch_num, phase):    
@@ -97,7 +99,7 @@ def trainEnc_MI(stats,model, optimizer, scheduler,dataloaders,device,kwargs):
                     loss = 0   
                     #we use jsd MI approx. since it is more stable eventually for other exp call compute dim loss
                     #function already implemented
-                    loss_MI = fenchel_dual_loss(C_phi, E_phi, measure='JSD')
+                    loss_MI = infonce_loss(C_phi, E_phi)#fenchel_dual_loss(C_phi, E_phi, measure='JSD')
                     
                     if use_prior:
                         loss += beta*loss_MI

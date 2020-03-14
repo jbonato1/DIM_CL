@@ -3,8 +3,8 @@ import torch
 import h5py
 
 ####libraries
-from DIM.gradient_penalty import contrastive_gradient_penalty
-from DIM.dim_loss import get_positive_expectation,get_negative_expectation
+from gradient_penalty import contrastive_gradient_penalty
+from dim_loss import get_positive_expectation,get_negative_expectation
 
 def train_disc(network,X_P,X_Q,optimizerD,metrics,gradient_penalty=1.0):
 
@@ -64,7 +64,9 @@ class sample_prior():
         return sample_prior
 
 def save_prior_dist(encoder,dataloader,device,path=None,save=False):
-    encoder.eval()
+    '''
+    Generate data fro classifier training
+    '''
     data =None
     lab = None
     for inputs, labels in dataloader:

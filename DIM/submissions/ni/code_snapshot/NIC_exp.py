@@ -15,7 +15,7 @@ from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import lr_scheduler
 
-writer = SummaryWriter('runs/experiment_prior')
+
 #######
 sys.path.append('/home/jbonato/Documents/cvpr_clvision_challenge/')
 from core50.dataset import CORE50
@@ -51,41 +51,73 @@ train = True
 
 stats = {"ram": [], "disk": []}
 
+labels_seen = []
+num = 0
 if train:
+    data_cur = None
     tr = Transform(affine=0.5, train=True,cutout_ratio=0.6,ssr_ratio=0.6,flip = 0.6)
-    ext_mem_block = None
     for i, train_batch in enumerate(dataset):
-        writerDIM = SummaryWriter('runs/experiment_DIM'+str(i))
+        store =False
         data,labels, t = train_batch
+        print(labels_seen,i,np.unique(labels))
         
-        index_tr,index_cv,coreset = data_split(data.shape[0],777)
-        # adding eventual replay patterns to the current batch
-        if i == 0:
+        lb =np.unique(labels).astype(np.int64).tolist()
+        for l in lb:
+            if l in labels_seen:
+                store = True
+            else:
+                labels_seen.append(l)
+        
+        if store and i!=390:
+            print('store')
+            if data_cur is None:
+                data_cur = data
+                labels_cur = labels
+            else:
+                data_cur =np.concatenate((data_cur,data),axis=0)
+                labels_cur =np.concatenate((labels_cur,labels),axis=0)
+        elif (not(store) and i!=0) or i==390:
+            print('new Train')
+            if i==390:
+                store=False
+                
+            if data_cur is None:
+                data_cur = data
+                labels_cur = labels
+            else:
+                data_cur =np.concatenate((data_cur,data),axis=0)
+                labels_cur =np.concatenate((labels_cur,labels),axis=0)
+                
+            ### extract cur_replay 
+            index_tr,index_cv,coreset = data_split(data_cur.shape[0],777)
+            ### add previous replay
+            if replay:
+                dataP = ext_mem[0]
+                labP = ext_mem[1]
+                dataC = np.concatenate((data_cur[index_tr], data_cur[index_cv],dataP),axis=0)
+                labC = np.concatenate((labels_cur[index_tr],labels_cur[index_cv],labP),axis=0)
+            else:
+                dataC = np.concatenate((data_cur[index_tr], data_cur[index_cv]),axis=0)
+                labC = np.concatenate((labels_cur[index_tr],labels_cur[index_cv]),axis=0)
+            
+            ### merge replay with cur_replay
+            ext_mem = [
+                np.concatenate((data_cur[coreset], ext_mem[0])),
+                np.concatenate((labels_cur[coreset], ext_mem[1]))]
+            data_cur = None
+            del labels_cur
+            
+        else:
+            index_tr,index_cv,coreset = data_split(data.shape[0],777)
             ext_mem = [data[coreset], labels[coreset]]
             dataC = np.concatenate((data[index_tr], data[index_cv]),axis=0)
             labC = np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
-        else:
-            dataP = ext_mem[0]
-            labP = ext_mem[1]
-
-            ext_mem = [
-                np.concatenate((data[coreset], ext_mem[0])),
-                np.concatenate((labels[coreset], ext_mem[1]))]
-            if replay:
-                dataC = np.concatenate((data[index_tr], data[index_cv],dataP),axis=0)
-                labC = np.concatenate((labels[index_tr],labels[index_cv],labP),axis=0)
-            else:
-                dataC = np.concatenate((data[index_tr], data[index_cv]),axis=0)
-                labC = np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
-        
-        stats['disk'].append(check_ext_mem("cl_ext_mem"))
-        stats['ram'].append(check_ram_usage())
-        
-        print("----------- batch {0} -------------".format(i))
-        print("Task Label: ", t)
-        trC,cvC = data_split_Tr_CV(dataC.shape[0],777)       
+             
             
-        if i%5==0:
+        if i==390:#not(store) or i==0:
+            writerDIM = SummaryWriter('/home/jbonato/Documents/cvpr_clvision_challenge/runs/experiment_DIM'+str(i))
+            print("qq----------- batch {0} -------------".format(i))
+            trC,cvC = data_split_Tr_CV(dataC.shape[0],777) 
             train_set = LoadDataset(dataC,labC,transform=tr,indices=trC)
             val_set = LoadDataset(dataC,labC,transform=tr,indices=cvC)
             print('Training set: {0} \n Validation Set {1}'.format(train_set.__len__(),val_set.__len__()))
@@ -96,16 +128,23 @@ if train:
 
             if i ==0:        
                 prior = False
-                ep=80
+                ep=30
                 dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
                 dim_model.to(device)
                 classifierM = classifier(n_input=128,n_class=50)
                 classifierM = classifierM.to(device)
-                writer = SummaryWriter('runs/experiment_C'+str(i))
+                writer = SummaryWriter('/home/jbonato/Documents/cvpr_clvision_challenge/runs/experiment_C'+str(i))
                 lr_new = 0.00001
                 lrC=0.0001
                 epC=50
             else:
+                #####
+                dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
+                dim_model.to(device)
+                classifierM = classifier(n_input=128,n_class=50)
+                classifierM = classifierM.to(device)
+                writer = SummaryWriter('/home/jbonato/Documents/cvpr_clvision_challenge/runs/experiment_C'+str(i))
+                #####
                 prior = True
                 ep=8
                 epC=10
@@ -114,16 +153,20 @@ if train:
 
             optimizer = torch.optim.Adam(dim_model.parameters(),lr=lr_new)
             scheduler = lr_scheduler.StepLR(optimizer,step_size=40,gamma=0.1) #there is also MultiStepLR
-            tr_dict_enc = {'ep':ep,'writer':writerDIM,'best_loss':1e10,'t_board':True,'gamma':.5,'beta':.5,'Prior_Flag':prior,'discriminator':classifierM}    
+            tr_dict_enc = {'ep':ep,'writer':writerDIM,'best_loss':1e10,'t_board':True,'gamma':.5,'beta':.5,
+                           'Prior_Flag':prior,'discriminator':classifierM}    
             tr_dict_cl = {'ep':50,'writer':writer,'best_loss':1e10,'t_board':True,'gamma':1}
 
-            if i==0 and load:
+            if i==390 and load:
                 print('Load DIM model weights first step')
-                dim_model.load_state_dict(torch.load('/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsDIM_T0_nic.pt'))
+                dim_model.load_state_dict(torch.load('/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsDIM_T340_nic.pt'))
+                classifierM.load_state_dict(torch.load('/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsC_T340_nic.pt'))
+                ######
+                dim_model = trainEnc_MI(dim_model, optimizer, scheduler,dataloaders,device,tr_dict_enc)
+                torch.save(dim_model.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsDIM_T'+str(i)+'_nic.pt')
             else:
                 dim_model = trainEnc_MI(dim_model, optimizer, scheduler,dataloaders,device,tr_dict_enc)
-                if i%50==0:
-                    torch.save(dim_model.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsDIM_T'+str(i)+'_nic.pt')
+                torch.save(dim_model.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsDIM_T'+str(i)+'_nic.pt')
 
             #if i==0:
             dataTr,labTr = save_prior_dist(dim_model,train_loader,device)
@@ -143,8 +186,7 @@ if train:
             schedulerC = lr_scheduler.StepLR(optimizerC,step_size=40,gamma=0.1)
             classifierM.requires_grad_(True)
             classifierM = train_classifier(classifierM, optimizerC, schedulerC,dataloaderC,device,tr_dict_cl)
-            if i%50==0:
-                torch.save(classifierM.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsC_T'+str(i)+'_nic.pt')
+            torch.save(classifierM.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsC_T'+str(i)+'_nic.pt')
 
             stats['disk'].append(check_ext_mem("cl_ext_mem"))
             stats['ram'].append(check_ram_usage())
@@ -152,7 +194,7 @@ if train:
             print('Memory usage',np.asarray(stats['ram']).mean())
 
         #### test Parte on coreset to undestand performance
-            if i%50==0 or i>389:
+            if num%4==0 or i==390:
                 test_set = LoadDataset(data_test,labels_test,transform=None)
                 batch_size=100
                 test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
@@ -169,7 +211,7 @@ if train:
                     score.append(np.sum(np.argmax(pred_l,axis=1)==labels.data.cpu().numpy())/pred_l.shape[0])
                 print('TEST PERFORMANCES:', np.asarray(score).mean())
                 del test_set,test_loader
-
+            num+=1
 
         
 else:
@@ -207,4 +249,4 @@ else:
     
     a,b = np.unique(labels_test,True)
     print(a)
-    print(b)
+    print(b)(base)

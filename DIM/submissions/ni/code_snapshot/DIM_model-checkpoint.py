@@ -1,10 +1,11 @@
 import torch.nn as nn
 import torch
 import numpy
-
+import sys
 import torchvision.models as models
-from DIM.model import *
-from DIM.mi_networks import *
+sys.path.append('/media/DATA/jbonato/cvpr_clvision_challenge/DIM/networks/')
+from model import *
+from mi_networks import *
 
 
 class DIM_model(nn.Module):
