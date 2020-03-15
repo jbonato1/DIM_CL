@@ -19,7 +19,8 @@ sys.path.append('/media/DATA/jbonato/cvpr_clvision_challenge/')
 from core50.dataset import CORE50
 from utils.common import create_code_snapshot
 from wrapperNI import *
-#from wrapperNC import *
+from wrapperNC import *
+from wrapperNIC import *
 
 def main(args):
 
@@ -36,7 +37,7 @@ def main(args):
 
     # Get the validation set
     print("Recovering validation set...")
-    full_valdidset = dataset.get_full_valid_set()
+    full_valdidset = dataset.get_full_valid_set(reduced=True)
     torch.cuda.set_device(int(args.gpu))
     device0 = torch.device('cuda:'+args.gpu)
     # code for training 
@@ -45,7 +46,7 @@ def main(args):
     elif args.scenario=='multi-task-nc':
         NI = NC_wrap(dataset,full_valdidset,device=device0,path='/media/DATA/jbonato/cvpr_clvision_challenge/',load=False)
     elif args.scenario=='nic':
-        raise NotImplementedError
+        NI = NIC_wrap(dataset,full_valdidset,device=device0,path='/media/DATA/jbonato/cvpr_clvision_challenge/',load=False)
     stats,valid_acc = NI.train()
     ram_usage = np.asarray(stats['ram'])
     ext_mem_sz = np.asarray(stats['disk'])

@@ -46,8 +46,6 @@ class NIC_wrap():
         labels_seen = []
         num = 0
         data_cur = None
-        tr = Transform(affine=0.5, train=True,cutout_ratio=0.6,ssr_ratio=0.6,flip = 0.6)
-        
         for i, train_batch in enumerate(self.dataset):
             store =False
             data,labels, t = train_batch
@@ -83,7 +81,7 @@ class NIC_wrap():
                 ### extract cur_replay 
                 index_tr,index_cv,coreset = data_split(data_cur.shape[0],777)
                 ### add previous replay
-                if replay:
+                if self.replay:
                     dataP = ext_mem[0]
                     labP = ext_mem[1]
                     dataC = np.concatenate((data_cur[index_tr], data_cur[index_cv],dataP),axis=0)
@@ -106,11 +104,11 @@ class NIC_wrap():
                 labC = np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
                 
             if not(store) or i==0:
-                writerDIM = SummaryWriter('/home/jbonato/Documents/cvpr_clvision_challenge/runs/experiment_DIM'+str(i))
-                print("qq----------- batch {0} -------------".format(i))
+                writerDIM = SummaryWriter(self.path+'runs/experiment_DIM'+str(i))
+                print("----------- batch {0} -------------".format(i))
                 trC,cvC = data_split_Tr_CV(dataC.shape[0],777) 
-                train_set = LoadDataset(dataC,labC,transform=tr,indices=trC)
-                val_set = LoadDataset(dataC,labC,transform=tr,indices=cvC)
+                train_set = LoadDataset(dataC,labC,transform=self.tr,indices=trC)
+                val_set = LoadDataset(dataC,labC,transform=self.tr,indices=cvC)
                 print('Training set: {0} \n Validation Set {1}'.format(train_set.__len__(),val_set.__len__()))
                 batch_size=32
                 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -121,21 +119,14 @@ class NIC_wrap():
                     prior = False
                     ep=30
                     dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
-                    dim_model.to(device)
-                    classifierM = classifier(n_input=128,n_class=50)
-                    classifierM = classifierM.to(device)
-                    writer = SummaryWriter('/home/jbonato/Documents/cvpr_clvision_challenge/runs/experiment_C'+str(i))
+                    dim_model.to(self.device)
+                    classifierM = _classifier(n_input=128,n_class=50,n_neurons=[512,256,128])
+                    classifierM = classifierM.to(self.device)
+                    writer = SummaryWriter(self.path+'runs/experiment_C'+str(i))
                     lr_new = 0.00001
                     lrC=0.0001
                     epC=50
                 else:
-                    #####
-                    dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
-                    dim_model.to(device)
-                    classifierM = classifier(n_input=128,n_class=50)
-                    classifierM = classifierM.to(device)
-                    writer = SummaryWriter('/home/jbonato/Documents/cvpr_clvision_challenge/runs/experiment_C'+str(i))
-                    #####
                     prior = True
                     ep=8
                     epC=10
@@ -143,25 +134,24 @@ class NIC_wrap():
                     lrC = 0.00005
 
                 optimizer = torch.optim.Adam(dim_model.parameters(),lr=lr_new)
-                scheduler = lr_scheduler.StepLR(optimizer,step_size=40,gamma=0.1) #there is also MultiStepLR
+                scheduler = lr_scheduler.StepLR(optimizer,step_size=25,gamma=0.1) #there is also MultiStepLR
                 tr_dict_enc = {'ep':ep,'writer':writerDIM,'best_loss':1e10,'t_board':True,'gamma':.5,'beta':.5,
                                'Prior_Flag':prior,'discriminator':classifierM}    
                 tr_dict_cl = {'ep':50,'writer':writer,'best_loss':1e10,'t_board':True,'gamma':1}
 
-                if i==390 and load:
+                if i==390 and self.load==Ture:
                     print('Load DIM model weights first step')
                     dim_model.load_state_dict(torch.load(self.path+'weights/weightsDIM_T340_nic.pt'))
-                    classifierM.load_state_dict(torch.load(self.path+'weights/weightsC_T340_nic.pt'))
-                    ######
-                    dim_model = trainEnc_MI(dim_model, optimizer, scheduler,dataloaders,device,tr_dict_enc)
-                    torch.save(dim_model.state_dict(), self.path+'weights/weightsDIM_T'+str(i)+'_nic.pt')
                 else:
-                    dim_model = trainEnc_MI(dim_model, optimizer, scheduler,dataloaders,device,tr_dict_enc)
-                    torch.save(dim_model.state_dict(),self.path+ 'weights/weightsDIM_T'+str(i)+'_nic.pt')
+                    ############################## Train Encoder########################################
+                    dim_model,self.stats = trainEnc_MI(self.stats,dim_model, optimizer, scheduler,dataloaders,self.device,tr_dict_enc)
+                     ############################## ############################## ##############################
+                    if i ==340:    
+                        torch.save(dim_model.state_dict(),self.path+ 'weights/weightsDIM_T'+str(i)+'_nic.pt')
 
-                #if i==0:
-                dataTr,labTr = save_prior_dist(dim_model,train_loader,device)
-                dataCv,labCv = save_prior_dist(dim_model,valid_loader,device)
+                
+                dataTr,labTr = save_prior_dist(dim_model,train_loader,self.device)
+                dataCv,labCv = save_prior_dist(dim_model,valid_loader,self.device)
 
                 print(dataTr.shape,labTr.shape)
 
@@ -176,10 +166,14 @@ class NIC_wrap():
                 optimizerC = torch.optim.Adam(classifierM.parameters(),lr=lrC)
                 schedulerC = lr_scheduler.StepLR(optimizerC,step_size=40,gamma=0.1)
                 classifierM.requires_grad_(True)
-                classifierM = train_classifier(classifierM, optimizerC, schedulerC,dataloaderC,device,tr_dict_cl)
-                torch.save(classifierM.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsC_T'+str(i)+'_nic.pt')
+                
+                ############################## Train Classifier ########################################
+                classifierM,self.stats = train_classifier(self.stats,classifierM, optimizerC, schedulerC,dataloaderC,self.device,tr_dict_cl)
+                #################################### #################################### ##############
+                if i ==340:
+                    torch.save(classifierM.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsC_T'+str(i)+'_nic.pt')
 
-            #### test Parte on coreset to undestand performance
+                #### Validation Set Performances
                 
                 test_set = LoadDataset(data_test,labels_test,transform=None)
                 batch_size=100
@@ -189,8 +183,8 @@ class NIC_wrap():
                 classifierM.eval()
                 for inputs, labels in test_loader:
                     torch.cuda.empty_cache()
-                    inputs = inputs.to(device)
-                    labels = labels.to(device) 
+                    inputs = inputs.to(self.device)
+                    labels = labels.to(self.device) 
                     _,_,ww =dim_model(inputs)
                     pred = classifierM(ww)
                     pred_l = pred.data.cpu().numpy()
@@ -199,7 +193,8 @@ class NIC_wrap():
 
                 acc_time.append(np.asarray(score).mean())
                 del test_set,test_loader
-                
+            else:
+                acc_time.append(acc_time[-1])
                 
         self.dim_model = dim_model
         self.classifierM = classifierM
@@ -215,7 +210,7 @@ class NIC_wrap():
             self.dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
             self.dim_model.to(self.device)
             
-            self.classifierM = classifier(n_input = 128,n_class=50)
+            self.classifierM = _classifier(n_input=128,n_class=50,n_neurons=[512,256,128])
             self.classifierM = self.classifierM.to(self.device)  
             
             self.dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T0cset128.pt'))

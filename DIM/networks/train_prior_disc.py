@@ -80,6 +80,7 @@ def save_prior_dist(encoder,dataloader,device,path=None,save=False):
         else:
             data = np.concatenate((data,pred_l),axis=0)
             lab = np.concatenate((lab,labels.data.cpu().numpy()),axis=0)
+        del pred
     if save:
         with h5py.File(path,'w') as f:
             dset = f.create_dataset('data',data=data)

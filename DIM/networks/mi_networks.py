@@ -21,6 +21,7 @@ class Glob_MI(nn.Module):
                 nn.ReLU(),
                 nn.Linear(n_units,1)
             )
+        self.block(kai_weights_init)
     def forward(self,x):
         return self.block(x)
 
@@ -135,6 +136,9 @@ class NopNet(nn.Module):
             x = x / x_norms
         return x
 
+def kai_weights_init(m):
+    if type(m)== nn.Linear:
+        nn.init.kaiming_uniform_(m.weight)
 
 def weights_init(m):
     ''' Weight initializer of DCGAN probably we need to play with it

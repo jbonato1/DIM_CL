@@ -99,7 +99,9 @@ def trainEnc_MI(stats,model, optimizer, scheduler,dataloaders,device,kwargs):
                     loss = 0   
                     #we use jsd MI approx. since it is more stable eventually for other exp call compute dim loss
                     #function already implemented
-                    loss_MI = infonce_loss(C_phi, E_phi)#fenchel_dual_loss(C_phi, E_phi, measure='JSD')
+                    loss_MI = fenchel_dual_loss(C_phi, E_phi, measure='JSD')
+                    
+                    #infonce_loss(C_phi, E_phi) we need to test also this measure
                     
                     if use_prior:
                         loss += beta*loss_MI
