@@ -15,12 +15,13 @@ import numpy as np
 
 import sys 
 ####
-sys.path.append('/media/DATA/jbonato/cvpr_clvision_challenge/')
+sys.path.append('/home/jbonato/Documents/cvpr_clvision_challenge/')
 from core50.dataset import CORE50
 from utils.common import create_code_snapshot
-from wrapperNI import *
-from wrapperNC import *
-from wrapperNIC import *
+from DIM.wrapperNI_adv2 import *
+#from DIM.wrapperNI import *
+#from DIM.wrapperNC import *
+from DIM.wrapperNC_adv import *
 
 def main(args):
 
@@ -32,21 +33,21 @@ def main(args):
 
     # Create the dataset object for example with the "ni, multi-task-nc, or nic
     # tracks" and assuming the core50 location in ./core50/data/
-    dataset = CORE50(root='/media/DATA/jbonato/cvpr_clvision_challenge/core50/data/', scenario=args.scenario,
+    dataset = CORE50(root='/home/jbonato/Documents/cvpr_clvision_challenge/core50/data/', scenario=args.scenario,
                      preload=True)
 
     # Get the validation set
     print("Recovering validation set...")
-    full_valdidset = dataset.get_full_valid_set(reduced=True)
-    torch.cuda.set_device(int(args.gpu))
-    device0 = torch.device('cuda:'+args.gpu)
-    # code for training 
+    full_valdidset = dataset.get_full_valid_set()
+    device0 = torch.device('cuda:0')
+#     # code for training 
     if args.scenario=='ni':
-        NI = NI_wrap(dataset,full_valdidset,device=device0,path='/media/DATA/jbonato/cvpr_clvision_challenge/',load=False)
+        NI = NI_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=args.load)
     elif args.scenario=='multi-task-nc':
-        NI = NC_wrap(dataset,full_valdidset,device=device0,path='/media/DATA/jbonato/cvpr_clvision_challenge/',load=False)
+        NI = NC_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=args.load)
     elif args.scenario=='nic':
-        NI = NIC_wrap(dataset,full_valdidset,device=device0,path='/media/DATA/jbonato/cvpr_clvision_challenge/',load=False)
+        raise NotImplementedError
+        
     stats,valid_acc = NI.train()
     ram_usage = np.asarray(stats['ram'])
     ext_mem_sz = np.asarray(stats['disk'])
@@ -95,8 +96,8 @@ if __name__ == "__main__":
                         choices=['ni', 'multi-task-nc', 'nic'],
                         help='directory of the submission file for this exp.')
 
-    parser.add_argument('--gpu', type=str, default="0",
-                        choices=['0','1','2'],
-                        help='GPU_num')
+    parser.add_argument('--load', type=bool, default=False,
+                        help='Load the first batch DIM weights')
+    
     args = parser.parse_args()
     main(args)

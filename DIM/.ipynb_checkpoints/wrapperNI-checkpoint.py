@@ -22,6 +22,7 @@ from pre_proc.transf import Transform
 from networks.model import _classifier
 from networks.train_prior_disc import save_prior_dist
 
+
 class NI_wrap():
     def __init__(self,dataset,val_data,device,path,load=False,replay=True):
         '''
@@ -85,7 +86,7 @@ class NI_wrap():
 
             if i ==0:        
                 prior = False
-                ep=80
+                ep=40
                 dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
                 dim_model.to(self.device)
                 classifierM = _classifier(n_input=128,n_class=50,n_neurons=[256,256,128])
@@ -96,7 +97,7 @@ class NI_wrap():
                 epC=50
             else:
                 prior = True
-                ep=8
+                ep=6
                 epC=10
                 lr_new =0.000005
                 lrC = 0.00005
@@ -106,7 +107,7 @@ class NI_wrap():
 
             tr_dict_enc = {'ep':ep,'writer':writerDIM,'best_loss':1e10,'t_board':True,
                            'gamma':.5,'beta':.5,'Prior_Flag':prior,'discriminator':classifierM}    
-            tr_dict_cl = {'ep':50,'writer':writer,'best_loss':1e10,'t_board':True,'gamma':1}
+            tr_dict_cl = {'ep':40,'writer':writer,'best_loss':1e10,'t_board':True,'gamma':1}
 
             if i==0 and self.load:
                 print('Load DIM model weights first step')
