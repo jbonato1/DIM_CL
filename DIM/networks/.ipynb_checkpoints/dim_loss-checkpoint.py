@@ -7,8 +7,8 @@ import math
 import torch
 import torch.nn.functional as F
 import sys
-sys.path.append('../')
-from func.misc import log_sum_exp
+
+from networks.misc import log_sum_exp
 
 
 
@@ -153,6 +153,19 @@ def fenchel_dual_loss(l, m, measure=None):
 
     return loss
 
+def jsd_global_loss(l,m):
+    '''Computes the f-divergence distance between positive and negative joint distributions.
+    Note that vectors should be sent as 1x1.
+    Divergences supported are Jensen-Shannon `JSD`, `GAN` (equivalent to JSD),
+    Squared Hellinger `H2`, Chi-squeared `X2`, `KL`, and reverse KL `RKL`.
+    Args:
+        l: Local feature map.
+        m: Multiple globals feature map.
+        measure: f-divergence measure.
+    Returns:
+        torch.Tensor: Loss.
+    '''
+    
 
 def infonce_loss(l, m):
     '''Computes the noise contrastive estimation-based loss, a.k.a. infoNCE.

@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn as nn
 #import sys
 #sys.path.append('/media/DATA/jbonato/cvpr_clvision_challenge/DIM/')
-from misc import Permute
+from networks.misc import Permute
 
 class Glob_MI(nn.Module):
     """

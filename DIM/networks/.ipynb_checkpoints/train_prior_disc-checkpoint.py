@@ -3,8 +3,8 @@ import torch
 import h5py
 
 ####libraries
-from gradient_penalty import contrastive_gradient_penalty
-from dim_loss import get_positive_expectation,get_negative_expectation
+from networks.gradient_penalty import contrastive_gradient_penalty
+from networks.dim_loss import get_positive_expectation,get_negative_expectation
 
 def train_disc(network,X_P,X_Q,optimizerD,metrics,gradient_penalty=1.0):
 

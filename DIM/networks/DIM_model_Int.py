@@ -3,7 +3,7 @@ import torch
 import numpy
 import sys
 import torchvision.models as models
-import pretrainedmodels
+#import pretrainedmodels
 
 
 from networks.model import *
@@ -14,7 +14,7 @@ class DIM_model(nn.Module):
     def __init__(self,batch_s = 32,num_classes =64,feature=False,out_class = 50):
         super().__init__()
         
-        model_ft = models.resnext50_32x4d(pretrained=True)#resnet18resnext101_32x8d#resnext50_32x4d#wide_resnet50_2
+        model_ft = models.resnext50_32x4d(pretrained=True)#resnet18resnext101_32x8d#resnext50_32x4d#wide_resnet50_2#resnext50_32x4d
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         

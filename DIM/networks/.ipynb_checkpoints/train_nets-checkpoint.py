@@ -13,8 +13,9 @@ from torch.nn import init
 from torch.nn.parameter import Parameter
 
 ###
-from dim_loss import *
-from train_prior_disc import train_disc,sample_prior
+from networks.dim_loss import *
+from networks.train_prior_disc import train_disc,sample_prior
+
 import sys
 sys.path.append('../')
 from func.common import check_ext_mem, check_ram_usage
@@ -288,9 +289,6 @@ def trainEnc_MIadv(stats,model, optimizer, scheduler,dataloaders,device,kwargs):
         # Each epoch has a training and validation phase
         for phase in ['train', 'val']:
             
-            if use_prior:
-                discriminator.requires_grad_(False)
-                
             if phase == 'train':    
                 model.train()  # Set model to training mode                
             else:

@@ -9,6 +9,7 @@ import numpy as np
 
 #import torchvision.models as models
 from torch.utils.data.dataloader import DataLoader
+from torchvision import transforms
 #import torch.nn as nn
 #import torch
 
@@ -25,7 +26,6 @@ from networks.DIM_model_Int import *
 
 from networks.train_nets import *
 from pre_proc.loader import data_split,data_split_Tr_CV,LoadDataset,data_org
-from pre_proc.transf import Transform 
 from networks.WSched import GradualWarmupScheduler
 
 class NC_wrap():
