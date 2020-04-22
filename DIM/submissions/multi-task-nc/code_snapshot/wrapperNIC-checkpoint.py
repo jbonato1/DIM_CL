@@ -1,3 +1,4 @@
+import argparse
 import os
 import time
 import copy
@@ -5,7 +6,8 @@ import six
 import sys
 import numpy as np
 from torch.utils.data.dataloader import DataLoader
-from torchvision import transforms
+
+import matplotlib.pyplot as plt
 
 ### tensorboard
 from torch.utils.tensorboard import SummaryWriter
@@ -15,7 +17,7 @@ import torch
 
 from networks.DIM_model import *
 from networks.train_nets import *
-from pre_proc.loader import LoadDataset,data_split,data_split_Tr_CV
+from pre_proc.loader import LoadDataset,data_split,data_split_Tr_CV,LoadFeatures
 from pre_proc.transf import Transform 
 from networks.model import _classifier
 from networks.train_prior_disc import save_prior_dist
@@ -33,35 +35,12 @@ class NIC_wrap():
         self.dataset = dataset
         self.val_data = val_data
         
-        self.tr = transforms.Compose([
-    
-            transforms.ToPILImage(),
-            transforms.RandomChoice([
-                transforms.ColorJitter(brightness=0.6),
-                transforms.ColorJitter(contrast=0.4),
-                transforms.ColorJitter(saturation=0.4),
-                ]),
-            transforms.RandomChoice([
-                transforms.RandomHorizontalFlip(p=1),
-                transforms.RandomVerticalFlip(p=1),
-                transforms.RandomRotation(180, resample=3, expand=False, center=None, fill=0),
-                transforms.RandomAffine(30, translate=(.1,.1), scale=(0.95,1.05), shear=5, resample=False, fillcolor=0)
-            ]),
-
-            transforms.ToTensor(),
-            #Cutout(4,20,p=0.6),
-            transforms.Normalize([0.60010594, 0.57207793, 0.54166424], [0.10679197, 0.10496728, 0.10731174])
-            ])
-        ################## transformation for validation and test set
-        self.trT = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize([0.60010594, 0.57207793, 0.54166424], [0.10679197, 0.10496728, 0.10731174])
-            ])
+        self.tr = Transform(affine=0.5, train=True,cutout_ratio=0.6,ssr_ratio=0.6,flip = 0.6)
         self.device = device
         self.path = path 
         
     def train(self):
-        acc_time = [0]
+        acc_time = []
         data_test = self.val_data[0][0][0]
         labels_test = self.val_data[0][0][1]
         labels_seen = []
@@ -105,11 +84,8 @@ class NIC_wrap():
                 if self.replay:
                     dataP = ext_mem[0]
                     labP = ext_mem[1]
-                    #dataC = np.concatenate((data_cur[index_tr], data_cur[index_cv],dataP),axis=0)
-                    #labC = np.concatenate((labels_cur[index_tr],labels_cur[index_cv],labP),axis=0)
-                    
-                    dataC = np.concatenate((data_cur,dataP),axis=0)
-                    labC = np.concatenate((labels_cur,labP),axis=0)
+                    dataC = np.concatenate((data_cur[index_tr], data_cur[index_cv],dataP),axis=0)
+                    labC = np.concatenate((labels_cur[index_tr],labels_cur[index_cv],labP),axis=0)
                 else:
                     dataC = np.concatenate((data_cur[index_tr], data_cur[index_cv]),axis=0)
                     labC = np.concatenate((labels_cur[index_tr],labels_cur[index_cv]),axis=0)
@@ -127,15 +103,12 @@ class NIC_wrap():
                 dataC = np.concatenate((data[index_tr], data[index_cv]),axis=0)
                 labC = np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
                 
-            if not(store) or i==0:#>=390:
+            if not(store) or i==0:
                 writerDIM = SummaryWriter(self.path+'runs/experiment_DIM'+str(i))
                 print("----------- batch {0} -------------".format(i))
-                
                 trC,cvC = data_split_Tr_CV(dataC.shape[0],777) 
-                
                 train_set = LoadDataset(dataC,labC,transform=self.tr,indices=trC)
                 val_set = LoadDataset(dataC,labC,transform=self.tr,indices=cvC)
-                
                 print('Training set: {0} \n Validation Set {1}'.format(train_set.__len__(),val_set.__len__()))
                 batch_size=32
                 train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -166,7 +139,7 @@ class NIC_wrap():
                                'Prior_Flag':prior,'discriminator':classifierM}    
                 tr_dict_cl = {'ep':50,'writer':writer,'best_loss':1e10,'t_board':True,'gamma':1}
 
-                if i==390 and self.load==True:
+                if i==390 and self.load==Ture:
                     print('Load DIM model weights first step')
                     dim_model.load_state_dict(torch.load(self.path+'weights/weightsDIM_T340_nic.pt'))
                 else:
@@ -203,7 +176,7 @@ class NIC_wrap():
                 #### Validation Set Performances
                 
                 test_set = LoadDataset(data_test,labels_test,transform=None)
-                batch_size=32
+                batch_size=100
                 test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
                 score= []
                 dim_model.eval()
@@ -261,3 +234,4 @@ class NIC_wrap():
             else:
                 score = np.concatenate((score,np.argmax(pred_l,axis=1)),axis=0)      
         return score
+
