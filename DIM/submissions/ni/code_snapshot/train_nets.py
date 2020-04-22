@@ -15,6 +15,11 @@ from torch.nn.parameter import Parameter
 ###
 from dim_loss import *
 from train_prior_disc import train_disc,sample_prior
+<<<<<<< HEAD
+=======
+import sys
+sys.path.append('../')
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 from func.common import check_ext_mem, check_ram_usage
 
 def print_metrics(metrics, batch_num, phase):    
@@ -99,6 +104,11 @@ def trainEnc_MI(stats,model, optimizer, scheduler,dataloaders,device,kwargs):
                     #function already implemented
                     loss_MI = fenchel_dual_loss(C_phi, E_phi, measure='JSD')
                     
+<<<<<<< HEAD
+=======
+                    #infonce_loss(C_phi, E_phi) we need to test also this measure
+                    
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
                     if use_prior:
                         loss += beta*loss_MI
                     else:

@@ -4,6 +4,7 @@ import time
 import copy
 import six
 import sys
+<<<<<<< HEAD
 
 import numpy as np
 
@@ -11,12 +12,17 @@ import numpy as np
 from torch.utils.data.dataloader import DataLoader
 #import torch.nn as nn
 #import torch
+=======
+import numpy as np
+from torch.utils.data.dataloader import DataLoader
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 
 import matplotlib.pyplot as plt
 
 ### tensorboard
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import lr_scheduler
+<<<<<<< HEAD
 
 import torch
 import numpy
@@ -28,6 +34,17 @@ from PP_misc.transf import Transform
 from model import classifier
 
 from train_prior_disc import save_prior_dist
+=======
+import torch
+
+
+from networks.DIM_model import *
+from networks.train_nets import *
+from pre_proc.loader import LoadDataset,data_split,data_split_Tr_CV,LoadFeatures
+from pre_proc.transf import Transform 
+from networks.model import _classifier
+from networks.train_prior_disc import save_prior_dist
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 
 class NI_wrap():
     def __init__(self,dataset,val_data,device,path,load=False,replay=True):
@@ -95,7 +112,11 @@ class NI_wrap():
                 ep=80
                 dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
                 dim_model.to(self.device)
+<<<<<<< HEAD
                 classifierM = classifier(n_input=128,n_class=50)
+=======
+                classifierM = _classifier(n_input=128,n_class=50,n_neurons=[256,256,128])
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
                 classifierM = classifierM.to(self.device)
                 writer = SummaryWriter('runs/experiment_C'+str(i))
                 lr_new = 0.00001
@@ -122,7 +143,12 @@ class NI_wrap():
                 ############################## Train Encoder########################################
                 dim_model,self.stats = trainEnc_MI(self.stats,dim_model, optimizer, scheduler,dataloaders,self.device,tr_dict_enc)
                 ####################################################################################
+<<<<<<< HEAD
                 torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'cset128.pt')
+=======
+                if i==0:
+                    torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'cset128.pt')
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 
             #if i==0:
             dataTr,labTr = save_prior_dist(dim_model,train_loader,self.device)
@@ -143,6 +169,7 @@ class NI_wrap():
             classifierM.requires_grad_(True)
 
             ############################## Train Classifier ########################################
+<<<<<<< HEAD
             classifierM,self.stats = train_classifier(self.stats,classifierM, optimizerC, schedulerC,dataloaderC,self.device,tr_dict_cl)
             #################################### #################################### ##############
 
@@ -156,6 +183,21 @@ class NI_wrap():
             score= []
             dim_model.eval()
             classifierM.eval()
+=======
+            classifierM,self.stats = train_classifier(self.stats,classifierM, optimizerC, schedulerC,dataloaderC,self.device,tr_dict_cl)            
+            #################################### #################################### ##############
+
+            #torch.save(classifierM.state_dict(), self.path + 'weights/weightsC_T'+str(i)+'cset128.pt')
+            dim_model.eval()
+            classifierM.eval()
+            #### Cross_val Testing
+            
+            test_set = LoadDataset(data_test,labels_test,transform=None)
+            batch_size=32
+            test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
+            score= []
+
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
             for inputs, labels in test_loader:
                 torch.cuda.empty_cache()
                 inputs = inputs.to(self.device)
@@ -167,6 +209,10 @@ class NI_wrap():
             print('TEST PERFORMANCES:', np.asarray(score).mean())
             acc_time.append(np.asarray(score).mean())
             del test_set,test_loader
+<<<<<<< HEAD
+=======
+                            
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
         self.dim_model = dim_model
         self.classifierM = classifierM
         acc_time = np.asarray(acc_time)
@@ -186,7 +232,11 @@ class NI_wrap():
 
         
         test_set = LoadDataset(test_data[0][0][0],transform=None)
+<<<<<<< HEAD
         batch_size=100
+=======
+        batch_size=32
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
         test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
         score = None
         self.dim_model.eval()

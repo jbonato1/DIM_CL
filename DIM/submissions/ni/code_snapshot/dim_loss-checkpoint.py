@@ -6,8 +6,14 @@ Most of this was taken out of the f-GAN paper. WGAN (IPM-style) is also supporte
 import math
 import torch
 import torch.nn.functional as F
+<<<<<<< HEAD
 
 from DIM.func.misc import log_sum_exp
+=======
+import sys
+sys.path.append('../')
+from func.misc import log_sum_exp
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 
 
 

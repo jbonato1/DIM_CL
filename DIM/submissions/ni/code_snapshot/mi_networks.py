@@ -1,7 +1,13 @@
 import torch
 import numpy as np 
 import torch.nn as nn
+<<<<<<< HEAD
 from DIM.misc import Permute
+=======
+#import sys
+#sys.path.append('/media/DATA/jbonato/cvpr_clvision_challenge/DIM/')
+from misc import Permute
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 
 class Glob_MI(nn.Module):
     """
@@ -19,6 +25,10 @@ class Glob_MI(nn.Module):
                 nn.ReLU(),
                 nn.Linear(n_units,1)
             )
+<<<<<<< HEAD
+=======
+        self.block(kai_weights_init)
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
     def forward(self,x):
         return self.block(x)
 
@@ -133,6 +143,12 @@ class NopNet(nn.Module):
             x = x / x_norms
         return x
 
+<<<<<<< HEAD
+=======
+def kai_weights_init(m):
+    if type(m)== nn.Linear:
+        nn.init.kaiming_uniform_(m.weight)
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 
 def weights_init(m):
     ''' Weight initializer of DCGAN probably we need to play with it

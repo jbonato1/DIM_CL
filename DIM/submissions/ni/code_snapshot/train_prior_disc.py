@@ -3,8 +3,13 @@ import torch
 import h5py
 
 ####libraries
+<<<<<<< HEAD
 from DIM.gradient_penalty import contrastive_gradient_penalty
 from DIM.dim_loss import get_positive_expectation,get_negative_expectation
+=======
+from gradient_penalty import contrastive_gradient_penalty
+from dim_loss import get_positive_expectation,get_negative_expectation
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 
 def train_disc(network,X_P,X_Q,optimizerD,metrics,gradient_penalty=1.0):
 
@@ -80,6 +85,10 @@ def save_prior_dist(encoder,dataloader,device,path=None,save=False):
         else:
             data = np.concatenate((data,pred_l),axis=0)
             lab = np.concatenate((lab,labels.data.cpu().numpy()),axis=0)
+<<<<<<< HEAD
+=======
+        del pred
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
     if save:
         with h5py.File(path,'w') as f:
             dset = f.create_dataset('data',data=data)

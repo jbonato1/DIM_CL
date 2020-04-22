@@ -23,13 +23,22 @@ import numpy
 
 from DIM_model import *
 from train_nets import *
+<<<<<<< HEAD
 from PP_misc.loader import LoadDataset,data_split,data_split_Tr_CV,LoadFeatures
 from PP_misc.transf import Transform 
+=======
+from pre_proc.loader import LoadDataset,data_split,data_split_Tr_CV,LoadFeatures
+from pre_proc.transf import Transform 
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 from model import classifier
 
 from train_prior_disc import save_prior_dist
 
+<<<<<<< HEAD
 class NI_wrap():
+=======
+class NC_wrap():
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
     def __init__(self,dataset,val_data,device,path,load=False,replay=True):
         '''
         Args:
@@ -79,7 +88,11 @@ class NI_wrap():
             
             writerDIM = SummaryWriter('runs/experiment_DIM'+str(i))
             data,labelsI, t = train_batch
+<<<<<<< HEAD
             labels = self.convert_lab(labelsI,t,case)            
+=======
+            labels = self.convert_lab(labelsI,t)            
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
             index_tr,index_cv,coreset = data_split(data.shape[0],777)
 
             # adding eventual replay patterns to the current batch
@@ -232,4 +245,7 @@ class NI_wrap():
             else:
                 score = np.concatenate((score,out_lab),axis=0)      
         return score
+<<<<<<< HEAD
 
+=======
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
