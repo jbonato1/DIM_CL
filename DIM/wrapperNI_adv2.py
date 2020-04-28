@@ -1,4 +1,3 @@
-
 import os
 import time
 import copy
@@ -29,7 +28,7 @@ from pre_proc.transf import Transform
 from networks.WSched import GradualWarmupScheduler
 
 class NI_wrap():
-    def __init__(self,dataset,val_data,device,path,load=False,replay=True):
+    def __init__(self,dataset,val_data,device,path,load=True,replay=True):
         '''
         Args:
         TO DO: complete Args
@@ -83,8 +82,11 @@ class NI_wrap():
             # adding eventual replay patterns to the current batch
             if i == 0:
                 ext_mem = [data[coreset], labels[coreset]]
-                dataC = np.concatenate((data[index_tr], data[index_cv]),axis=0)
-                labC = np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
+#                dataC = np.concatenate((data[index_tr], data[index_cv]),axis=0)
+#                labC = np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
+ 
+                dataC = data[index_tr]#np.concatenate((data[index_tr]),axis=0)
+                labC = labels[index_tr]#np.concatenate((labels[index_tr],axis=0)
             else:
                 dataP = ext_mem[0]
                 labP = ext_mem[1]
@@ -95,8 +97,8 @@ class NI_wrap():
                 if self.replay:
                     #dataC = np.concatenate((data[index_tr], data[index_cv],dataP),axis=0)
                     #labC = np.concatenate((labels[index_tr],labels[index_cv],labP),axis=0)
-                    dataC = np.concatenate((data,dataP),axis=0)
-                    labC = np.concatenate((labels,labP),axis=0)
+                    dataC = np.concatenate((data[index_tr],dataP),axis=0)
+                    labC = np.concatenate((labels[index_tr],labP),axis=0)
                 else:
                     dataC = np.concatenate((data[index_tr], data[index_cv]),axis=0)
                     labC = np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
@@ -117,36 +119,42 @@ class NI_wrap():
 
             print('Training set: {0} \nValidation Set {1}'.format(train_set.__len__(),val_set.__len__()))
             batch_size=32
+            batch_sizeV = 32
+            if trC.shape[0]%batch_size==1:
+                batch_size-=1
+
+            if cvC.shape[0]%batch_sizeV==1:
+                batch_sizeV-=1
+
             train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-            valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+            valid_loader = DataLoader(val_set, batch_size=batch_sizeV, shuffle=False)
             dataloaders = {'train':train_loader,'val':valid_loader}
 
             if i ==0:        
                 prior = False
-                ep=40
+                ep=30
                 dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
                 dim_model.to(self.device)
                 
                 writer = SummaryWriter('runs/experiment_C'+str(i))
                 lr_new = 0.00001
-                lrC=0.0001
-                epC=50
                 epWU = 5
             else:
                 epWU = 2
                 prior = True
                 ep=8
-                epC=10
+                if i>2:
+                    ep=5
                 lr_new =0.000005
-                lrC = 0.00005
+                
 
             optimizer = torch.optim.Adam(dim_model.parameters(),lr=lr_new)
-            sched = lr_scheduler.StepLR(optimizer,step_size=20,gamma=0.1) #there is also MultiStepLR
+            scheduler = lr_scheduler.StepLR(optimizer,step_size=20,gamma=0.1) #there is also MultiStepLR
             
-            scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=epWU, after_scheduler=sched)
+            #scheduler = #GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=epWU, after_scheduler=sched)
             
             tr_dict_enc = {'ep':ep,'writer':writerDIM,'best_loss':1e10,'t_board':True,
-                           'gamma':.5,'beta':.5,'Prior_Flag':prior,'discriminator':classifierM}    
+                           'gamma':.5,'beta':.5,'Prior_Flag':prior}    
            
 
             if i==0 and self.load:
@@ -161,11 +169,14 @@ class NI_wrap():
             #### Cross_val Testing
 
             test_set = LoadDataset(data_test,labels_test,transform=self.trT)
-            batch_size=32
+            batch_size = 32
+            if data_test.shape[0]%batch_size==1:
+                batch_size-=1
+            
             test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
             score= []
             dim_model.eval()
-            classifierM.eval()
+            
             for inputs, labels in test_loader:
                 torch.cuda.empty_cache()
                 inputs = inputs.to(self.device)
@@ -178,7 +189,7 @@ class NI_wrap():
             acc_time.append(np.asarray(score).mean())
             del test_set,test_loader
         self.dim_model = dim_model
-        self.classifierM = classifierM
+
         acc_time = np.asarray(acc_time)
         return self.stats,acc_time
         

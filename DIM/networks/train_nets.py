@@ -93,16 +93,15 @@ def trainEnc_MI(stats,model, optimizer, scheduler,dataloaders,device,kwargs):
                 inputs = inputs.to(device)
                 labels = labels.to(device)        
                 optimizer.zero_grad()
-                
+                #print(inputs.size(),inputs.dtype,labels.size(),labels.dtype)
                 # forward
                 with torch.set_grad_enabled(phase == 'train'):                    
                     E_phi,C_phi,A_phi = model(inputs)
                     loss = 0   
-                    #we use jsd MI approx. since it is more stable eventually for other exp call compute dim loss
+                    #we use infoNCE MI approx. since it is more stable eventually for other exp call compute dim loss
+                    #fenchel_dual_loss(C_phi, E_phi, measure='JSD')
                     #function already implemented
-                    loss_MI = fenchel_dual_loss(C_phi, E_phi, measure='JSD')
-                    
-                    #infonce_loss(C_phi, E_phi) we need to test also this measure
+                    loss_MI = infonce_loss(C_phi, E_phi) 
                     
                     if use_prior:
                         loss += beta*loss_MI
@@ -206,6 +205,7 @@ def train_classifier(stats,model, optimizer, scheduler,dataloaders,device,kwargs
                 optimizer.zero_grad()
                 # forward
                 # track history if only in train
+                #print(inputs.size(),inputs.dtype,labels.size(),labels.dtype)
                 with torch.set_grad_enabled(phase == 'train'):                    
                     
                     out = model(inputs)

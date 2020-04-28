@@ -115,8 +115,8 @@ class NC_wrap():
                     np.concatenate((data[coreset], ext_mem[0])),
                     np.concatenate((labels[coreset], ext_mem[1]))]
                 if self.replay:
-                    dataC = np.concatenate((data,dataP),axis=0)
-                    labC = np.concatenate((labels,labP),axis=0)
+                    dataC = np.concatenate((data[index_tr],dataP),axis=0)
+                    labC = np.concatenate((labels[index_tr],labP),axis=0)
 #                     dataC = np.concatenate((data[index_tr], data[index_cv],dataP),axis=0)
 #                     labC = np.concatenate((labels[index_tr],labels[index_cv],labP),axis=0)
                 else:
@@ -138,9 +138,17 @@ class NC_wrap():
                 val_set = LoadDataset(dataC,labC,transform=self.tr,indices=cvC,ref=dataR)
 
             print('Training set: {0} \nValidation Set {1}'.format(train_set.__len__(),val_set.__len__()))
+
             batch_size=32
+            batch_sizeV = 32
+            if trC.shape[0]%batch_size==1:
+                batch_size-=1
+
+            if cvC.shape[0]%batch_sizeV==1:
+                batch_sizeV-=1
+
             train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-            valid_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
+            valid_loader = DataLoader(val_set, batch_size=batch_sizeV, shuffle=False)
             dataloaders = {'train':train_loader,'val':valid_loader}
 
             if i ==0:        
@@ -177,10 +185,15 @@ class NC_wrap():
             #### Cross_val Testing
             score = []
             for task_i in range(len(self.val_data)):
-                batch_size=32
+
                 
                 data_test = self.val_data[task_i][0][0]
                 labels_test = self.val_data[task_i][0][1]
+
+                batch_size = 32
+                if data_test.shape[0]%batch_size==1:
+                    batch_size-=1
+
                 task = task_i
                 test_set = LoadDataset(data_test,labels_test,transform=self.trT)
                 test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)

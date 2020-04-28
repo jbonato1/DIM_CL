@@ -18,10 +18,12 @@ import sys
 sys.path.append('/home/jbonato/Documents/cvpr_clvision_challenge/')
 from core50.dataset import CORE50
 from utils.common import create_code_snapshot
-from DIM.wrapperNI_adv2 import *
+
 #from DIM.wrapperNI import *
 #from DIM.wrapperNC import *
+from DIM.wrapperNI_adv2 import *
 from DIM.wrapperNC_adv import *
+from DIM.wrapperNIC import *
 
 def main(args):
 
@@ -68,6 +70,9 @@ def main(args):
             np.average(valid_acc), elapsed, np.average(ram_usage),
             np.max(ram_usage), np.average(ext_mem_sz), np.max(ext_mem_sz)
         ]:
+            wf.write(str(obj) + "\n")
+    with open(sub_dir + "/valid_hist.txt", "w") as wf:
+        for obj in [valid_acc]:
             wf.write(str(obj) + "\n")
 
     # test_preds.txt: with a list of labels separated by "\n"

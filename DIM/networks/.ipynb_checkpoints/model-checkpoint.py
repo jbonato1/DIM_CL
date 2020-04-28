@@ -88,7 +88,7 @@ class classifier(nn.Module):
         out = self.linear(x)
         return out
 def lin_block(inp,out):
-    return nn.Sequential(nn.Linear(inp,out, bias=False),
+    return nn.Sequential(nn.Linear(inp,out, bias=True),
                          nn.ReLU(),
                          nn.BatchNorm1d(out))
 
@@ -107,7 +107,7 @@ class _classifier(nn.Module):
         for j in range(len(self.n_neurons)-1):
             layer.append(lin_block(self.n_neurons[j],self.n_neurons[j+1]))
             
-        layer.append(nn.Linear(self.n_neurons[-1],self.n_class,bias=False))
+        layer.append(nn.Linear(self.n_neurons[-1],self.n_class,bias=True))
         return nn.Sequential(*layer)
     
     def forward(self,x):

@@ -116,3 +116,42 @@ class LoadDataset(Dataset):
                 return out,label
             else:
                 return image
+
+            
+class LoadFeat(Dataset):
+    """Data loader with parallel Batch for MI maxim across batches. If loader is empty is a standard loader"""
+
+    def __init__(self,feat,labels=None,transform=None,indices=None,ref=None):
+        """
+        Args:
+            images -> np.arr (samples,H,W,C)
+            labels -> np.arr (sample,)
+            transform (callable, optional): Optional transform to be applied
+                on a sample.
+        """
+        if not(indices is None):
+            self.index = indices
+        else:
+            self.index = np.arange(feat.shape[0])
+            
+        self.im = feat[self.index]
+        if not(labels is None):
+            self.lb = labels[self.index]
+        else: 
+            self.lb = None
+
+ 
+    def __len__(self):
+        return len(self.im)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        image = torch.from_numpy(self.im[idx])
+ 
+        if not(self.lb is None):
+            label = self.lb[idx]
+            return image,label
+        else:
+            return image

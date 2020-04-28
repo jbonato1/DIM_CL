@@ -3,10 +3,9 @@ import torch
 import numpy
 import sys
 import torchvision.models as models
-import pretrainedmodels
-sys.path.append('/media/DATA/jbonato/cvpr_clvision_challenge/DIM/networks/')
-from model import *
-from mi_networks import *
+
+from networks.model import *
+from networks.mi_networks import *
 
 
 class DIM_model(nn.Module):
@@ -21,7 +20,7 @@ class DIM_model(nn.Module):
 #         self.head =  nn.AdaptiveAvgPool2d((1, 1))
 #         self.head2 = model_ft.last_linear
         
-        model_ft = models.resnext101_32x8d(pretrained=True)#resnet18
+        model_ft = models.resnet18(pretrained=True)#resnet18#resnext101_32x8d
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         

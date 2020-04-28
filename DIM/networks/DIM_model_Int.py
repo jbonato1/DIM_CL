@@ -3,9 +3,9 @@ import torch
 import numpy
 import sys
 import torchvision.models as models
-#import pretrainedmodels
-
-
+import pretrainedmodels as ptmod
+from efficientnet_pytorch import EfficientNet
+sys.path.append('/home/jbonato/Documents/cvpr_clvision_challenge/DIM/')
 from networks.model import *
 from networks.mi_networks import *
 
@@ -13,14 +13,25 @@ from networks.mi_networks import *
 class DIM_model(nn.Module):
     def __init__(self,batch_s = 32,num_classes =64,feature=False,out_class = 50):
         super().__init__()
-        
-        model_ft = models.resnext50_32x4d(pretrained=True)#resnet18resnext101_32x8d#resnext50_32x4d#wide_resnet50_2#resnext50_32x4d
+        ###########pytorch pretrained mod
+        model_ft = models.resnext101_32x8d(pretrained=True)#resnet18resnext101_32x8d#resnext50_32x4d#wide_resnet50_2#resnext50_32x4d
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         
         self.encoder = nn.Sequential(*list(model_ft.children())[:8])
         self.head =  model_ft.avgpool
         self.head2 = model_ft.fc
+        ###########cadene
+#         model = EfficientNet.from_pretrained('efficientnet-b4')
+#         #model.set_swish(memory_efficient=False)
+#         blocks = nn.Sequential(*model._blocks)
+#         self.encoder = nn.Sequential(model._conv_stem,model._bn0,blocks,model._conv_head)
+        
+#         self.head = model._avg_pooling
+        
+#         num_ftrs = model._fc.in_features
+#         model._fc = nn.Linear(num_ftrs, num_classes)
+#         self.head2 = nn.Sequential(model._fc)#model._dropout,
         
         #test input output size and channel to use
         fake_in = torch.ones([2,3,128,128])
@@ -35,6 +46,8 @@ class DIM_model(nn.Module):
         n_inputL = out1.size(1)
         n_inputG = out2.size(1)
         n_units = 2048
+        #model = model.to(torch.device('cuda:0'))
+        
         #classifier
         self.cl = nn.Linear(inputCL, 50, bias=False)
 
@@ -47,16 +60,13 @@ class DIM_model(nn.Module):
         self.features_l = n_units
         
         self.feature = feature
-        self.RB = nn.Sequential(
-                nn.ReLU(),    
-                nn.BatchNorm1d(num_classes),
-                )
+
     def forward(self,x):
         self.batch = x.size(0)
         C_phi = self.encoder(x)
         buff = self.head(C_phi)
         buff = torch.flatten(buff, 1)
-        
+        #print(buff.size())
         class_r = self.cl(buff)
         
         E_phi = self.head2(buff)

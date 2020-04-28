@@ -12,12 +12,13 @@ import matplotlib.pyplot as plt
 ### tensorboard
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim import lr_scheduler
+from torchvision import transforms
 import torch
 
 
 from networks.DIM_model import *
 from networks.train_nets import *
-from pre_proc.loader import LoadDataset,data_split,data_split_Tr_CV,LoadFeatures
+from pre_proc.loader import LoadDataset,data_split,data_split_Tr_CV,LoadFeat
 from pre_proc.transf import Transform 
 from networks.model import _classifier
 from networks.train_prior_disc import save_prior_dist
@@ -36,7 +37,28 @@ class NI_wrap():
         self.dataset = dataset
         self.val_data = val_data
         
-        self.tr = Transform(affine=0.5, train=True,cutout_ratio=0.6,ssr_ratio=0.6,flip = 0.6)
+        self.tr = transforms.Compose([
+    
+            transforms.ToPILImage(),
+            transforms.RandomChoice([
+                transforms.ColorJitter(brightness=0.6),
+                transforms.ColorJitter(contrast=0.4),
+                transforms.ColorJitter(saturation=0.4),
+                ]),
+            transforms.RandomChoice([
+                transforms.RandomHorizontalFlip(p=1),
+                transforms.RandomVerticalFlip(p=1),
+                transforms.RandomRotation(180, resample=3, expand=False, center=None, fill=0),
+                transforms.RandomAffine(30, translate=(.1,.1), scale=(0.95,1.05), shear=5, resample=False, fillcolor=0)
+            ]),
+
+            transforms.ToTensor(),
+            transforms.Normalize([0.60010594, 0.57207793, 0.54166424], [0.10679197, 0.10496728, 0.10731174])
+            ])
+        self.trT = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.60010594, 0.57207793, 0.54166424], [0.10679197, 0.10496728, 0.10731174])
+            ])
         self.device = device
         self.path = path 
         
@@ -94,11 +116,11 @@ class NI_wrap():
                 writer = SummaryWriter('runs/experiment_C'+str(i))
                 lr_new = 0.00001
                 lrC=0.0001
-                epC=50
+                
             else:
                 prior = True
                 ep=6
-                epC=10
+                
                 lr_new =0.000005
                 lrC = 0.00005
 
@@ -107,26 +129,52 @@ class NI_wrap():
 
             tr_dict_enc = {'ep':ep,'writer':writerDIM,'best_loss':1e10,'t_board':True,
                            'gamma':.5,'beta':.5,'Prior_Flag':prior,'discriminator':classifierM}    
-            tr_dict_cl = {'ep':40,'writer':writer,'best_loss':1e10,'t_board':True,'gamma':1}
+            tr_dict_cl = {'ep':40,'writer':writer,'best_loss':1e10,'t_board':True,'gamma':1}#40
 
             if i==0 and self.load:
                 print('Load DIM model weights first step')
-                dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T0cset128.pt'))
+                dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T0.pt'))
             else:
                 ############################## Train Encoder########################################
                 dim_model,self.stats = trainEnc_MI(self.stats,dim_model, optimizer, scheduler,dataloaders,self.device,tr_dict_enc)
                 ####################################################################################
                 if i==0:
-                    torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'cset128.pt')
+                    torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'.pt')
 
             #if i==0:
-            dataTr,labTr = save_prior_dist(dim_model,train_loader,self.device)
-            dataCv,labCv = save_prior_dist(dim_model,valid_loader,self.device)
+#             dataTr,labTr = save_prior_dist(dim_model,train_loader,self.device)
+#             dataCv,labCv = save_prior_dist(dim_model,valid_loader,self.device)
+            dim_model.requires_grad_(False)
+            for phase in ['train','val']:
+                dataF = None
+                labF = None
+                for inputs, labels in dataloaders[phase]:
+                    torch.cuda.empty_cache()
+                    if len(inputs.shape)==5:
 
-            print(dataTr.shape,labTr.shape)
+                        inputs = inputs[:,:,:,:,0].to(self.device)
+                    else:
+                        inputs = inputs.to(self.device)
 
-            train_set = LoadFeatures(dataTr,labTr)
-            val_set = LoadFeatures(dataCv,labCv)
+                    _,_,pred = dim_model(inputs)
+                    pred_l = pred.data.cpu().numpy()
+                    if dataF is None:
+                        dataF = pred_l
+                        labF = labels.data.cpu().numpy()
+                    else:
+                        dataF = np.concatenate((dataF,pred_l),axis=0)
+                        labF = np.concatenate((labF,labels.data.cpu().numpy()),axis=0)
+
+                if phase == 'train':
+                    dataTr_f = dataF
+                    labTr_f  = labF
+                else:
+                    dataCv_f = dataF
+                    labCv_f = labF
+                
+            dim_model.requires_grad_(True)
+            train_set = LoadFeat(dataTr_f,labTr_f)
+            val_set = LoadFeat(dataCv_f,labCv_f)
             batch_size=32
 
             train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -141,12 +189,12 @@ class NI_wrap():
             classifierM,self.stats = train_classifier(self.stats,classifierM, optimizerC, schedulerC,dataloaderC,self.device,tr_dict_cl)            
             #################################### #################################### ##############
 
-            #torch.save(classifierM.state_dict(), self.path + 'weights/weightsC_T'+str(i)+'cset128.pt')
+            torch.save(classifierM.state_dict(), self.path + 'weights/weightsC_T'+str(i)+'.pt')
             dim_model.eval()
             classifierM.eval()
             #### Cross_val Testing
             
-            test_set = LoadDataset(data_test,labels_test,transform=None)
+            test_set = LoadDataset(data_test,labels_test,transform=self.trT)
             batch_size=32
             test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
             score= []
@@ -174,14 +222,14 @@ class NI_wrap():
             self.dim_model = DIM_model(batch_s=32,num_classes =128,feature=True)   
             self.dim_model.to(self.device)
             
-            self.classifierM = classifier(n_input = 128,n_class=50)
+            self.classifierM = _classifier(n_input=128,n_class=50,n_neurons=[256,256,128])
             self.classifierM = self.classifierM.to(self.device)  
             
-            self.dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T0cset128.pt'))
-            self.classifierM.load_state_dict(torch.load(self.path + 'weights/weightsC_T0cset128.pt'))
+            self.dim_model.load_state_dict(torch.load(self.path + 'weights/weightsDIM_T7.pt'))
+            self.classifierM.load_state_dict(torch.load(self.path + 'weights/weightsC_T7.pt'))
 
         
-        test_set = LoadDataset(test_data[0][0][0],transform=None)
+        test_set = LoadDataset(test_data[0][0][0],transform=self.trT)
         batch_size=32
         test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
         score = None
