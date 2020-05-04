@@ -11,10 +11,16 @@ from networks.mi_networks import *
 
 
 class DIM_model(nn.Module):
-    def __init__(self,batch_s = 32,num_classes =64,feature=False,out_class = 50):
+    def __init__(self,batch_s = 32,num_classes =64,feature=False,out_class = 50,model_ty=101):
         super().__init__()
         ###########pytorch pretrained mod
-        model_ft = models.resnext101_32x8d(pretrained=True)#resnet18resnext101_32x8d#resnext50_32x4d#wide_resnet50_2#resnext50_32x4d
+        if model_ty==101:
+            print('resnext101_32x8d')
+            model_ft = models.resnext101_32x8d(pretrained=True)#resnet18resnext101_32x8d#resnext50_32x4d#wide_resnet50_2#resnext50_32x4d
+        else:
+            print('resnext50_32x4d')
+            model_ft = models.resnext50_32x4d(pretrained=True)
+            
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         

@@ -103,8 +103,9 @@ class NI_wrap():
                     dataC = np.concatenate((data[index_tr], data[index_cv]),axis=0)
                     labC = np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
  
- 
- 
+            del data,labels,train_batch 
+         
+        
             print("----------- batch {0} -------------".format(i))
             print("Task Label: ", t)
             trC,cvC = data_split_Tr_CV(dataC.shape[0],777)
@@ -154,7 +155,7 @@ class NI_wrap():
             #scheduler = #GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=epWU, after_scheduler=sched)
             
             tr_dict_enc = {'ep':ep,'writer':writerDIM,'best_loss':1e10,'t_board':True,
-                           'gamma':.5,'beta':.5,'Prior_Flag':prior}    
+                           'gamma':.1,'beta':.5,'Prior_Flag':prior}    
            
 
             if i==0 and self.load:
@@ -164,7 +165,7 @@ class NI_wrap():
                 ############################## Train Encoder########################################
                 dim_model,self.stats = trainEnc_MIadv(self.stats,dim_model, optimizer, scheduler,dataloaders,self.device,tr_dict_enc)
                 ####################################################################################
-                torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'cset128_cnn.pt')
+                #torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'cset128_cnn.pt')
 
             #### Cross_val Testing
 

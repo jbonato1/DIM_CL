@@ -115,16 +115,18 @@ class NC_wrap():
                     np.concatenate((data[coreset], ext_mem[0])),
                     np.concatenate((labels[coreset], ext_mem[1]))]
                 if self.replay:
-                    dataC = np.concatenate((data[index_tr],dataP),axis=0)
-                    labC = np.concatenate((labels[index_tr],labP),axis=0)
+                    dataC = np.concatenate((data,dataP),axis=0)
+                    labC = np.concatenate((labels,labP),axis=0)
 #                     dataC = np.concatenate((data[index_tr], data[index_cv],dataP),axis=0)
 #                     labC = np.concatenate((labels[index_tr],labels[index_cv],labP),axis=0)
+
                 else:
-                    dataC = np.concatenate((data[index_tr], data[index_cv]),axis=0)
-                    labC = np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
+                    dataC = data#np.concatenate((data[index_tr], data[index_cv]),axis=0)
+                    labC = data#np.concatenate((labels[index_tr],labels[index_cv]),axis=0)
 
 
-
+            del data,labels,train_batch 
+            
             print("----------- batch {0} -------------".format(i))
             print("Task Label: ", t)
             trC,cvC = data_split_Tr_CV(dataC.shape[0],777)
@@ -153,8 +155,8 @@ class NC_wrap():
 
             if i ==0:        
                 prior = False
-                ep=20
-                dim_model = DIM_model(batch_s=32,num_classes =128,feature=True,out_class =10)   
+                ep=30
+                dim_model = DIM_model(batch_s=32,num_classes =128,feature=True,out_class =10,model_ty=50)   
                 dim_model.to(self.device)
                 writer = SummaryWriter('runs/experiment_C'+str(i))
                 lr_new = 0.00001
@@ -179,7 +181,7 @@ class NC_wrap():
                 ############################## Train Encoder########################################
                 dim_model,self.stats = trainEnc_MIadv(self.stats,dim_model, optimizer, scheduler,dataloaders,self.device,tr_dict_enc)
                 ####################################################################################
-                torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'_NC128.pt')
+                #torch.save(dim_model.state_dict(), self.path + 'weights/weightsDIM_T'+str(i)+'_NC128.pt')
 
             
             #### Cross_val Testing

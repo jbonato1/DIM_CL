@@ -74,13 +74,14 @@ def main(args):
     with open(sub_dir + "/valid_hist.txt", "w") as wf:
         for obj in [valid_acc]:
             wf.write(str(obj) + "\n")
-
+    
+    #np.savetxt(sub_dir+'/valid.txt', valid_acc, delimiter=',')
     # test_preds.txt: with a list of labels separated by "\n"
-    print("Final inference on test set...")
+#    print("Final inference on test set...")
     full_testset = dataset.get_full_test_set()
 
     pred = NI.test(full_testset,standalone=False)
-    
+#    
     with open(sub_dir + "/test_preds.txt", "w") as wf:
         for jj in range(pred.shape[0]):
             wf.write(str(pred[jj]) + "\n")

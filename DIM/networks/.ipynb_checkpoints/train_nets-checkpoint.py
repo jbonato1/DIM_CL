@@ -333,7 +333,7 @@ def trainEnc_MIadv(stats,model, optimizer, scheduler,dataloaders,device,kwargs):
                         
                         loss_MI_ref =  infonce_loss(C_phi_ref.detach(),E_phi)
                         metrics['MI_REF_loss']+=loss_MI_ref.data.cpu().numpy()
-                        loss += beta*loss_MI_ref
+                        loss += gamma*loss_MI_ref
                         
                         losscl = compute_loss(pred,labels,metrics)
                         metrics['CL_loss']+=losscl.data.cpu().numpy()

@@ -101,7 +101,7 @@ class NIC_wrap():
                     labels_cur = labels
                     
                 else:
-                    idx_cur = np.random.choice(np.arange(data_cur.shape[0]),int(0.33*data_cur.shape[0]))
+                    idx_cur = np.random.choice(np.arange(data_cur.shape[0]),int(0.5*data_cur.shape[0]))
                     data_cur =np.concatenate((data_cur,data),axis=0)
                     labels_cur =np.concatenate((labels_cur,labels),axis=0)
 
@@ -111,7 +111,7 @@ class NIC_wrap():
                 if self.replay:
                     dataP = ext_mem[0]
                     labP = ext_mem[1]
-                    idx_P = np.random.choice(np.arange(dataP.shape[0]),int(0.33*dataP.shape[0]))
+                    idx_P = np.random.choice(np.arange(dataP.shape[0]),int(0.5*dataP.shape[0]))
                     #dataC = np.concatenate((data_cur[index_tr], data_cur[index_cv],dataP),axis=0)
                     #labC = np.concatenate((labels_cur[index_tr],labels_cur[index_cv],labP),axis=0)
                     
@@ -204,8 +204,8 @@ class NIC_wrap():
                     ############################## Train Encoder########################################
                     dim_model,self.stats = trainEnc_MI(self.stats,dim_model, optimizer, scheduler,dataloaders,self.device,tr_dict_enc)
                      ############################## ############################## ##############################
-                    if i ==390:    
-                        torch.save(dim_model.state_dict(),self.path+ 'weights/weightsDIM_T'+str(i)+'_nic.pt')
+                    #if i ==390:    
+                    #    torch.save(dim_model.state_dict(),self.path+ 'weights/weightsDIM_T'+str(i)+'_nic.pt')
 
                 
                 #dataTr,labTr = save_prior_dist(dim_model,train_loader,self.device)
@@ -254,8 +254,8 @@ class NIC_wrap():
                 ############################## Train Classifier ########################################
                 classifierM,self.stats = train_classifier(self.stats,classifierM, optimizerC, schedulerC,dataloaderC,self.device,tr_dict_cl)
                 #################################### #################################### ##############
-                if i ==390:
-                    torch.save(classifierM.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsC_T'+str(i)+'_nic.pt')
+                #if i ==390:
+                #    torch.save(classifierM.state_dict(), '/home/jbonato/Documents/cvpr_clvision_challenge/weights/weightsC_T'+str(i)+'_nic.pt')
 
                 #### Validation Set Performances
                 

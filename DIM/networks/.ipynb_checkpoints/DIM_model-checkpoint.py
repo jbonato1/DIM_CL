@@ -20,7 +20,7 @@ class DIM_model(nn.Module):
 #         self.head =  nn.AdaptiveAvgPool2d((1, 1))
 #         self.head2 = model_ft.last_linear
         
-        model_ft = models.resnet18(pretrained=True)#resnet18#resnext101_32x8d
+        model_ft = models.resnext101_32x8d(pretrained=True)#resnet18#
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         
