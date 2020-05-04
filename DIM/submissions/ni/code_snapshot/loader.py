@@ -2,120 +2,12 @@ import numpy
 import six
 import torch
 from torch.utils.data.dataset import Dataset
-#import albumentations as A
+from torchvision import transforms
 import numpy as np
-#import cv2
-#from skimage.transform import AffineTransform, warp
 import numpy as np
-#import pandas as pd
 import gc
 
-class DatasetMixin(Dataset):
 
-    def __init__(self, transform=None):
-        self.transform = transform
-       
-
-    def __getitem__(self, index):
-        """Returns an example or a sequence of examples."""
-        if torch.is_tensor(index):
-            index = index.tolist()
-        if isinstance(index, slice):
-            current, stop, step = index.indices(len(self))
-            return [self.get_example_wrapper(i) for i in
-                    six.moves.range(current, stop, step)]
-        elif isinstance(index, list) or isinstance(index, numpy.ndarray):
-            return [self.get_example_wrapper(i) for i in index]
-        else:
-            return self.get_example_wrapper(index)
-
-    def __len__(self):
-        """Returns the number of data points."""
-        raise NotImplementedError
-
-    def get_example_wrapper(self, i):
-        """Wrapper of `get_example`, to apply `transform` if necessary"""
-        example = self.get_example(i)
-        
-        if self.transform:
-            example = self.transform(example)
-   
-        return example
-
-    def get_example(self, i):
-        """Returns the i-th example.
-
-        Implementations should override it. It should raise :class:`IndexError`
-        if the index is invalid.
-
-        Args:
-            i (int): The index of the example.
-
-        Returns:
-            The i-th example.
-
-        """
-        raise NotImplementedError
-
-class LoadDataset(DatasetMixin):
-    def __init__(self, images, labels=None, transform=None, indices=None):
-        super(LoadDataset, self).__init__(transform=transform)
-        self.images = images
-        self.labels = labels
-        if indices is None:
-            indices = np.arange(len(images))
-        self.indices = indices
-        self.train = labels is not None
-
-    def __len__(self):
-        """return length of this dataset"""
-        return len(self.indices)
-
-    def get_example(self, i):
-        """Return i-th data"""
-        i = self.indices[i]
-        x = self.images[i]
-        #print(x.shape)
-        # scale to [0,1] interval
-        x = x/255
-        
-        # normalize
-        x[ :, :, 0] = ((x[ :, :, 0] - 0.485) / 0.229)
-        x[ :, :, 1] = ((x[ :, :, 1] - 0.456) / 0.224)
-        x[ :, :, 2] = ((x[ :, :, 2] - 0.406) / 0.225)
-        
-        # Swap channel dimension to fit the caffe format (c, w, h)
-        x = np.transpose(x, (2, 0, 1))        
-        if self.train:
-            y = self.labels[i]
-            return x, y
-        else:
-            return x
-        
-class LoadFeatures(DatasetMixin):
-    def __init__(self, features, labels=None, transform=None, indices=None):
-        super(LoadFeatures, self).__init__(transform=transform)
-        self.images = features
-        self.labels = labels
-        if indices is None:
-            indices = np.arange(len(features))
-        self.indices = indices
-        self.train = labels is not None
-
-    def __len__(self):
-        """return length of this dataset"""
-        return len(self.indices)
-
-    def get_example(self, i):
-        """Return i-th data"""
-        i = self.indices[i]
-        x = self.images[i]    
-        if self.train:
-            y = self.labels[i]
-            return x, y
-        else:
-            return x
-        
 def data_split(n_dataset,seed,debug=False):
     '''This module divide data_batchin:
         90%(training, cv) and 10%(coreset)
@@ -153,3 +45,74 @@ def data_split_Tr_CV(train_data_size,seed,debug=False):
     perm = np.random.RandomState(seed).permutation(train_data_size)
     
     return perm[:tr],perm[tr:]
+
+def data_org(data,lab):
+    L = lab.max()
+    gen_list = []
+    for i in range(int(L)+1):
+        pt = np.where(lab==i)
+        gen_list.append(data[pt[0],:,:,:])
+    return gen_list
+
+class LoadDataset(Dataset):
+    """Data loader with parallel Batch for MI maxim across batches. If loader is empty is a standard loader"""
+
+    def __init__(self,images,labels=None,transform=None,indices=None,ref=None):
+        """
+        Args:
+            images -> np.arr (samples,H,W,C)
+            labels -> np.arr (sample,)
+            transform (callable, optional): Optional transform to be applied
+                on a sample.
+        """
+        if not(indices is None):
+            self.index = indices
+        else:
+            self.index = np.arange(images.shape[0])
+            
+        self.im = images[self.index].astype(np.uint8)
+        if not(labels is None):
+            self.lb = labels[self.index]
+        else: 
+            self.lb = None
+        self.transform = transform
+        self.ref = ref
+        if not(self.ref is None):
+            self.standardize = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize([0.60010594, 0.57207793, 0.54166424], [0.10679197, 0.10496728, 0.10731174])
+            ])
+ 
+    def __len__(self):
+        return len(self.im)
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        image = self.im[idx]
+        #print(image.shape)
+        if self.transform:
+            image = self.transform(image)
+        if self.ref is None:    
+            if not(self.lb is None):
+                label = self.lb[idx]
+                return image,label
+            else:
+                return image
+        else:
+            if not(self.lb is None):
+                label = self.lb[idx]
+                #pt = np.where(self.ref[1]==label)
+                #print(len(self.ref),int(label))
+                vec_choice = self.ref[int(label)]
+                idx_ref = np.random.randint(vec_choice.shape[0], size=1)#np.random.choice(np.arange(),1) 
+                
+                reference = vec_choice[idx_ref,:,:,:] 
+                out = torch.empty((3,128,128,2),dtype=torch.float32)
+                out[:,:,:,0]=image
+                out[:,:,:,1]=self.standardize(reference[0])
+                #print(out.size(),image.size())
+                return out,label
+            else:
+                return image

@@ -1,17 +1,38 @@
 import torch.nn as nn
 import torch
 import numpy
+<<<<<<< HEAD
 
 import torchvision.models as models
 from DIM.model import *
 from DIM.mi_networks import *
+=======
+import sys
+import torchvision.models as models
+import pretrainedmodels
+sys.path.append('/media/DATA/jbonato/cvpr_clvision_challenge/DIM/networks/')
+from model import *
+from mi_networks import *
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
 
 
 class DIM_model(nn.Module):
     def __init__(self,batch_s = 32,num_classes =64,feature=False):
         super().__init__()
         
+<<<<<<< HEAD
         model_ft = models.resnet18(pretrained=True)#resnet18
+=======
+#         model_ft = pretrainedmodels.__dict__["se_resnext101_32x4d"](num_classes=1000, pretrained='imagenet')
+#         num_ftrs = model_ft.last_linear.in_features
+#         model_ft.last_linear = nn.Linear(num_ftrs, num_classes)
+        
+#         self.encoder = nn.Sequential(*list(model_ft.children())[:5])
+#         self.head =  nn.AdaptiveAvgPool2d((1, 1))
+#         self.head2 = model_ft.last_linear
+        
+        model_ft = models.resnext101_32x8d(pretrained=True)#resnet18
+>>>>>>> fc9dbda0e6b2bce4d095cf0e5f5413e1e2c30199
         num_ftrs = model_ft.fc.in_features
         model_ft.fc = nn.Linear(num_ftrs, num_classes)
         
