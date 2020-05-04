@@ -16,6 +16,8 @@ import numpy as np
 import sys 
 ####
 sys.path.append('./DIM')
+sys.path.append('./core50')
+
 from core50.dataset import CORE50
 from utils.common import create_code_snapshot
 
