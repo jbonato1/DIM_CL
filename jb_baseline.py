@@ -15,7 +15,7 @@ import numpy as np
 
 import sys 
 ####
-sys.path.append('/home/jbonato/Documents/cvpr_clvision_challenge/')
+sys.path.append('./DIM')
 from core50.dataset import CORE50
 from utils.common import create_code_snapshot
 
@@ -34,7 +34,7 @@ def main(args):
     start = time.time()
 
     # Create the dataset object
-    dataset = CORE50(root='/home/jbonato/Documents/cvpr_clvision_challenge/core50/data/', scenario=args.scenario,preload=True)
+    dataset = CORE50(root='./core50/data/', scenario=args.scenario,preload=False)
 
     #################################  Get the validation set
     print("Recovering validation set...")
@@ -43,11 +43,11 @@ def main(args):
     
     ################################ # code for training 
     if args.scenario=='ni':
-        NI = NI_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=args.load)
+        NI = NI_wrap(dataset,full_valdidset,device=device0,path='./DIM/',load=args.load)
     elif args.scenario=='multi-task-nc':
-        NI = NC_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=args.load)
+        NI = NC_wrap(dataset,full_valdidset,device=device0,path='./DIM/',load=args.load)
     elif args.scenario=='nic':
-        NI = NIC_wrap(dataset,full_valdidset,device=device0,path='/home/jbonato/Documents/cvpr_clvision_challenge/',load=args.load)
+        NI = NIC_wrap(dataset,full_valdidset,device=device0,path='./DIM/',load=args.load)
         
     stats,valid_acc = NI.train()
     ram_usage = np.asarray(stats['ram'])
