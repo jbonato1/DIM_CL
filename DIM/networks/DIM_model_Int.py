@@ -3,7 +3,6 @@ import torch
 import numpy
 import sys
 import torchvision.models as models
-import pretrainedmodels as ptmod
 from networks.model import *
 from networks.mi_networks import *
 
