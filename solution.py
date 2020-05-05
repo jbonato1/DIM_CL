@@ -13,7 +13,7 @@ import copy
 import torch
 import numpy as np
 
-import sys 
+import sys
 ####
 sys.path.append('./DIM')
 sys.path.append('./core50')
@@ -42,19 +42,19 @@ def main(args):
     print("Recovering validation set...")
     full_valdidset = dataset.get_full_valid_set()
     device0 = torch.device('cuda:0')
-    
-    ################################ # code for training 
+
+    ################################ # code for training
     if args.scenario=='ni':
         NI = NI_wrap(dataset,full_valdidset,device=device0,path='./DIM/',load=args.load)
     elif args.scenario=='multi-task-nc':
         NI = NC_wrap(dataset,full_valdidset,device=device0,path='./DIM/',load=args.load)
     elif args.scenario=='nic':
         NI = NIC_wrap(dataset,full_valdidset,device=device0,path='./DIM/',load=args.load)
-        
+
     stats,valid_acc = NI.train()
     ram_usage = np.asarray(stats['ram'])
     ext_mem_sz = np.asarray(stats['disk'])
-    
+
     #################################  Generate submission.zip
     #################################  directory with the code snapshot to generate the results
     sub_dir = 'submissions/' + args.sub_dir
@@ -73,17 +73,17 @@ def main(args):
             np.max(ram_usage), np.average(ext_mem_sz), np.max(ext_mem_sz)
         ]:
             wf.write(str(obj) + "\n")
-    with open(sub_dir + "/valid_hist.txt", "w") as wf:
-        for obj in [valid_acc]:
-            wf.write(str(obj) + "\n")
-    
+    # with open(sub_dir + "/valid_hist.txt", "w") as wf:
+    #     for obj in [valid_acc]:
+    #         wf.write(str(obj) + "\n")
+
     #np.savetxt(sub_dir+'/valid.txt', valid_acc, delimiter=',')
     # test_preds.txt: with a list of labels separated by "\n"
 #    print("Final inference on test set...")
     full_testset = dataset.get_full_test_set()
 
     pred = NI.test(full_testset,standalone=False)
-#    
+#
     with open(sub_dir + "/test_preds.txt", "w") as wf:
         for jj in range(pred.shape[0]):
             wf.write(str(pred[jj]) + "\n")
@@ -99,13 +99,13 @@ if __name__ == "__main__":
                         choices=['ni', 'multi-task-nc', 'nic'])
     parser.add_argument('--preload_data', type=bool, default=True,
                         help='preload data into RAM')
-    
+
     parser.add_argument('--sub_dir', type=str, default="ni",
                         choices=['ni', 'multi-task-nc', 'nic'],
                         help='directory of the submission file for this exp.')
 
     parser.add_argument('--load', type=bool, default=False,
                         help='Load the first batch DIM weights')
-    
+
     args = parser.parse_args()
     main(args)
