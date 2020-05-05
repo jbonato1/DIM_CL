@@ -36,7 +36,7 @@ def main(args):
     start = time.time()
 
     # Create the dataset object
-    dataset = CORE50(root='./core50/data/', scenario=args.scenario,preload=False)
+    dataset = CORE50(root='./core50/data/', scenario=args.scenario,preload=True)
 
     #################################  Get the validation set
     print("Recovering validation set...")
