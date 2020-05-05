@@ -155,5 +155,4 @@ dependencies:
     - tqdm==4.45.0
     - urllib3==1.25.8
     - werkzeug==1.0.0
-prefix: /home/jbonato/.conda/envs/clvision-challenge
 
