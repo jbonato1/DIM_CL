@@ -4,8 +4,6 @@ import numpy
 import sys
 import torchvision.models as models
 import pretrainedmodels as ptmod
-from efficientnet_pytorch import EfficientNet
-sys.path.append('/home/jbonato/Documents/cvpr_clvision_challenge/DIM/')
 from networks.model import *
 from networks.mi_networks import *
 
@@ -16,7 +14,7 @@ class DIM_model(nn.Module):
         ###########pytorch pretrained mod
         if model_ty==101:
             print('resnext101_32x8d')
-            model_ft = models.resnext101_32x8d(pretrained=True)#resnet18resnext101_32x8d#resnext50_32x4d#wide_resnet50_2#resnext50_32x4d
+            model_ft = models.resnext101_32x8d(pretrained=True)
         else:
             print('resnext50_32x4d')
             model_ft = models.resnext50_32x4d(pretrained=True)
@@ -27,17 +25,6 @@ class DIM_model(nn.Module):
         self.encoder = nn.Sequential(*list(model_ft.children())[:8])
         self.head =  model_ft.avgpool
         self.head2 = model_ft.fc
-        ###########cadene
-#         model = EfficientNet.from_pretrained('efficientnet-b4')
-#         #model.set_swish(memory_efficient=False)
-#         blocks = nn.Sequential(*model._blocks)
-#         self.encoder = nn.Sequential(model._conv_stem,model._bn0,blocks,model._conv_head)
-        
-#         self.head = model._avg_pooling
-        
-#         num_ftrs = model._fc.in_features
-#         model._fc = nn.Linear(num_ftrs, num_classes)
-#         self.head2 = nn.Sequential(model._fc)#model._dropout,
         
         #test input output size and channel to use
         fake_in = torch.ones([2,3,128,128])
